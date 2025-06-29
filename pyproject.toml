@@ -1,0 +1,28 @@
+[project]
+name = "reflint"
+version = "0.1.0"
+description = "Comprehensive BibTeX Reference Checker and Fixer"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bibtexparser>=1.4.3",
+    "click>=8.2.1",
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "pygments>=2.19.2",
+    "rich>=14.0.0",
+    "ruamel-yaml>=0.18.14",
+]
+
+[project.scripts]
+reflint = "reflint.main:main"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.9.1",
+    "mypy>=1.16.1",
+    "pre-commit>=4.2.0",
+    "pytest>=8.4.1",
+    "pytest-cov>=6.2.1",
+    "ruff>=0.12.1",
+]
