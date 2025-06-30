@@ -7,6 +7,8 @@ requires-python = ">=3.12"
 dependencies = [
     "bibtexparser>=1.4.3",
     "click>=8.2.1",
+    "colorama>=0.4.6",
+    "diskcache>=5.6.3",
     "httpx>=0.28.1",
     "loguru>=0.7.3",
     "pygments>=2.19.2",

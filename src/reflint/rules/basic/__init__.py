@@ -5,6 +5,7 @@ from .mandatory_fields import MandatoryFieldsRule
 from .date_validation import DateValidationRule
 from .page_formatting import PageFormattingRule
 from .url_validation import URLValidationRule
+from .math_mode_validation import MathModeValidationRule
 
 
 # Auto-register all basic rules
@@ -14,6 +15,7 @@ def register_basic_rules() -> None:
     register_rule(DateValidationRule())
     register_rule(PageFormattingRule())
     register_rule(URLValidationRule())
+    register_rule(MathModeValidationRule())
 
 
 # Register rules when module is imported
