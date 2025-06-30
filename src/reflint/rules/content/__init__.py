@@ -3,6 +3,7 @@
 from ..registry import register_rule
 from .brace_management import AdvancedBraceManagementRule
 from .conditional_validation import ConditionalValidationRule
+from .content_cleanup import ContentCleanupRule
 from .journal_issn_validation import JournalIssnValidationRule
 from .publication_name_standardization import PublicationNameStandardizationRule
 from .unicode_latex_conversion import UnicodeLatexConversionRule, create_unicode_rule
@@ -12,6 +13,7 @@ def register_content_rules() -> None:
     """Register all content validation rules."""
     register_rule(AdvancedBraceManagementRule())
     register_rule(ConditionalValidationRule())
+    register_rule(ContentCleanupRule())
     register_rule(JournalIssnValidationRule())
     register_rule(PublicationNameStandardizationRule())
     register_rule(create_unicode_rule())
@@ -23,6 +25,7 @@ register_content_rules()
 __all__ = [
     "AdvancedBraceManagementRule",
     "ConditionalValidationRule",
+    "ContentCleanupRule",
     "JournalIssnValidationRule",
     "PublicationNameStandardizationRule",
     "UnicodeLatexConversionRule",

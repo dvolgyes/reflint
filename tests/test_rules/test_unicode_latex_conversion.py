@@ -438,7 +438,7 @@ class TestUnicodeLatexConversionRule:
         rule_ascii = UnicodeLatexConversionRule(QuoteStyle.ASCII_STRAIGHT)
         results = rule_ascii.validate(entry)
         assert len(results) == 1
-        assert '"Double" quotes and \'single\' quotes' in results[0].suggested_fix
+        assert "\"Double\" quotes and 'single' quotes" in results[0].suggested_fix
 
     def test_create_unicode_rule_factory(self):
         """Test the factory function for creating rules with different styles."""
@@ -509,10 +509,10 @@ class TestUnicodeLatexConversionRule:
 
         # Check that conversion details are in the message
         assert "\u201c" in message  # Original Unicode char
-        assert "``" in message     # LaTeX equivalent
+        assert "``" in message  # LaTeX equivalent
         assert "\u201d" in message  # Original Unicode char
-        assert "''" in message     # LaTeX equivalent
+        assert "''" in message  # LaTeX equivalent
         assert "\u2018" in message  # Original Unicode char
-        assert "`" in message      # LaTeX equivalent
+        assert "`" in message  # LaTeX equivalent
         assert "\u2019" in message  # Original Unicode char
-        assert "'" in message      # LaTeX equivalent
+        assert "'" in message  # LaTeX equivalent

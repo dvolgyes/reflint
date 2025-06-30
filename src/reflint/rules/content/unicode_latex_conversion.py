@@ -19,16 +19,16 @@ class QuoteStyle:
 
     # Computer Modern style (alternative)
     LATEX_CSQUOTES = {
-        "left_double": r'\enquote{',
-        "right_double": r'}',
-        "left_single": r'\enquote*{',
-        "right_single": r'}',
+        "left_double": r"\enquote{",
+        "right_double": r"}",
+        "left_single": r"\enquote*{",
+        "right_single": r"}",
     }
 
     # Keep Unicode quotes (no conversion)
     UNICODE_PRESERVE = {
         "left_double": "\u201c",
-        "right_double": "\u201d", 
+        "right_double": "\u201d",
         "left_single": "\u2018",
         "right_single": "\u2019",
     }
@@ -284,18 +284,22 @@ class UnicodeLatexConversionRule(BaseRule):
         conversions = []
 
         # Handle quotation marks first if using csquotes style (needs special handling)
-        if (self.quote_style == QuoteStyle.LATEX_CSQUOTES):
+        if self.quote_style == QuoteStyle.LATEX_CSQUOTES:
             converted_text, quote_conversions = self._convert_csquotes(converted_text)
             conversions.extend(quote_conversions)
-        elif (self.quote_style != QuoteStyle.UNICODE_PRESERVE):
+        elif self.quote_style != QuoteStyle.UNICODE_PRESERVE:
             # Handle quotation marks with simple replacement (unless preserving Unicode)
             quote_mappings = {
-                "\u201c": self.quote_style["left_double"],   # left double quotation mark
-                "\u201d": self.quote_style["right_double"],  # right double quotation mark 
-                "\u2018": self.quote_style["left_single"],   # left single quotation mark
-                "\u2019": self.quote_style["right_single"],  # right single quotation mark
+                "\u201c": self.quote_style["left_double"],  # left double quotation mark
+                "\u201d": self.quote_style[
+                    "right_double"
+                ],  # right double quotation mark
+                "\u2018": self.quote_style["left_single"],  # left single quotation mark
+                "\u2019": self.quote_style[
+                    "right_single"
+                ],  # right single quotation mark
             }
-            
+
             for unicode_char, latex_equiv in quote_mappings.items():
                 if unicode_char in converted_text and latex_equiv != unicode_char:
                     conversions.append((unicode_char, latex_equiv))
@@ -319,72 +323,78 @@ class UnicodeLatexConversionRule(BaseRule):
         This handles proper nesting of quote content.
         """
         import re
-        
+
         conversions = []
-        
+
         # Handle double quotes
-        double_quote_pattern = r'\u201c([^\u201d]*?)\u201d'
+        double_quote_pattern = r"\u201c([^\u201d]*?)\u201d"
+
         def replace_double(match):
             content = match.group(1)
-            conversions.append(('\u201c', r'\enquote{'))
-            conversions.append(('\u201d', '}'))
-            return r'\enquote{' + content + '}'
-        
+            conversions.append(("\u201c", r"\enquote{"))
+            conversions.append(("\u201d", "}"))
+            return r"\enquote{" + content + "}"
+
         text = re.sub(double_quote_pattern, replace_double, text)
-        
+
         # Handle single quotes
-        single_quote_pattern = r'\u2018([^\u2019]*?)\u2019'
+        single_quote_pattern = r"\u2018([^\u2019]*?)\u2019"
+
         def replace_single(match):
             content = match.group(1)
-            conversions.append(('\u2018', r'\enquote*{'))
-            conversions.append(('\u2019', '}'))
-            return r'\enquote*{' + content + '}'
-        
+            conversions.append(("\u2018", r"\enquote*{"))
+            conversions.append(("\u2019", "}"))
+            return r"\enquote*{" + content + "}"
+
         text = re.sub(single_quote_pattern, replace_single, text)
-        
+
         return text, conversions
 
 
-def create_unicode_rule(quote_style: str = "latex-traditional") -> UnicodeLatexConversionRule:
+def create_unicode_rule(
+    quote_style: str = "latex-traditional",
+) -> UnicodeLatexConversionRule:
     """
     Factory function to create Unicode conversion rule with specified quote style.
-    
+
     This addresses cultural and language differences in quotation mark usage:
     - Traditional LaTeX uses `` and '' for double quotes, ` and ' for single quotes
     - Some prefer csquotes package for language-aware quotation handling
     - Others want to preserve Unicode quotes for modern LaTeX engines
     - ASCII straight quotes provide compatibility with plain text systems
-    
+
     Quote conversion behavior:
     - "..." (U+201C/U+201D) → configured double quote style
     - '...' (U+2018/U+2019) → configured single quote style
-    
+
     Args:
         quote_style: Quote conversion style. Options:
             - "latex-traditional": ``...'' and `...' (default, most compatible)
             - "latex-csquotes": \\enquote{...} and \\enquote*{...} (language-aware)
             - "unicode-preserve": Keep Unicode quotes unchanged (modern LaTeX)
             - "ascii-straight": "..." and '...' (plain text compatibility)
-    
+
     Returns:
         Configured UnicodeLatexConversionRule instance
-        
+
     Example:
         # Use csquotes for language-aware quotation handling
         rule = create_unicode_rule("latex-csquotes")
-        
+
         # Preserve Unicode quotes for XeLaTeX/LuaLaTeX
         rule = create_unicode_rule("unicode-preserve")
     """
     style_map = {
         "latex-traditional": QuoteStyle.LATEX_TRADITIONAL,
-        "latex-csquotes": QuoteStyle.LATEX_CSQUOTES, 
+        "latex-csquotes": QuoteStyle.LATEX_CSQUOTES,
         "unicode-preserve": QuoteStyle.UNICODE_PRESERVE,
         "ascii-straight": QuoteStyle.ASCII_STRAIGHT,
     }
-    
+
     if quote_style not in style_map:
-        raise ValueError(f"Unknown quote style: {quote_style}. "
-                        f"Available options: {list(style_map.keys())}")
-    
+        raise ValueError(
+            f"Unknown quote style: {quote_style}. "
+            f"Available options: {list(style_map.keys())}"
+        )
+
     return UnicodeLatexConversionRule(quote_style=style_map[quote_style])
