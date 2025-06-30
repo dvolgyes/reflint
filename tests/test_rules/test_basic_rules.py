@@ -94,7 +94,14 @@ class TestDateValidationRule:
             entry = BibTeXEntry(entry_dict)
 
             violations = rule.validate(entry)
-            assert len(violations) == 0, f"Month '{month}' should be valid"
+            # Numeric months should have no violations
+            if month in ["1", "01"]:
+                assert len(violations) == 0, f"Numeric month '{month}' should have no violations"
+            else:
+                # Text months should only have normalization suggestions (info level)
+                assert len(violations) == 1, f"Text month '{month}' should have normalization suggestion"
+                assert violations[0].severity == "info"
+                assert "normalizing month" in violations[0].message
 
     def test_invalid_month(self):
         """Test invalid month format."""
