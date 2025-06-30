@@ -10,6 +10,8 @@ from bibtexparser.bibdatabase import BibDatabase
 from bibtexparser.bwriter import BibTexWriter
 
 from .entry import BibTeXEntry
+from .validation import ValidationResult
+from ..rules import get_registry
 
 
 class BibTeXProcessor:
@@ -138,3 +140,44 @@ class BibTeXProcessor:
     def __getitem__(self, index: int) -> BibTeXEntry:
         """Get entry by index."""
         return self.entries[index]
+
+    def validate_entries(
+        self, rule_filter: list[str] | None = None
+    ) -> list[ValidationResult]:
+        """Validate all entries using registered rules."""
+        logger.info(f"Validating {len(self.entries)} entries")
+
+        registry = get_registry()
+        results: list[ValidationResult] = []
+
+        for entry in self.entries:
+            result = registry.validate_entry(entry, rule_filter)
+            results.append(result)
+
+            # Log validation summary
+            if result.has_errors:
+                logger.warning(f"Entry '{entry.key}': {result.error_count} errors")
+            elif result.has_warnings:
+                logger.info(f"Entry '{entry.key}': {result.warning_count} warnings")
+
+        # Log overall summary
+        total_errors = sum(r.error_count for r in results)
+        total_warnings = sum(r.warning_count for r in results)
+        total_info = sum(r.info_count for r in results)
+
+        logger.info(
+            f"Validation complete: {total_errors} errors, {total_warnings} warnings, {total_info} info"
+        )
+
+        return results
+
+    def get_validation_summary(self, results: list[ValidationResult]) -> dict:
+        """Get summary statistics from validation results."""
+        return {
+            "total_entries": len(results),
+            "entries_with_errors": sum(1 for r in results if r.has_errors),
+            "entries_with_warnings": sum(1 for r in results if r.has_warnings),
+            "total_errors": sum(r.error_count for r in results),
+            "total_warnings": sum(r.warning_count for r in results),
+            "total_info": sum(r.info_count for r in results),
+        }
