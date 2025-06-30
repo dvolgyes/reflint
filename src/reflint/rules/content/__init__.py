@@ -5,6 +5,7 @@ from .brace_management import AdvancedBraceManagementRule
 from .conditional_validation import ConditionalValidationRule
 from .journal_issn_validation import JournalIssnValidationRule
 from .publication_name_standardization import PublicationNameStandardizationRule
+from .unicode_latex_conversion import UnicodeLatexConversionRule
 
 
 def register_content_rules() -> None:
@@ -13,6 +14,7 @@ def register_content_rules() -> None:
     register_rule(ConditionalValidationRule())
     register_rule(JournalIssnValidationRule())
     register_rule(PublicationNameStandardizationRule())
+    register_rule(UnicodeLatexConversionRule())
 
 
 # Register rules when module is imported
@@ -23,4 +25,5 @@ __all__ = [
     "ConditionalValidationRule",
     "JournalIssnValidationRule",
     "PublicationNameStandardizationRule",
+    "UnicodeLatexConversionRule",
 ]
