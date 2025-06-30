@@ -197,18 +197,16 @@ class TestOpenAlexSource:
         }
 
         with patch("httpx.AsyncClient") as mock_client:
-            # Create proper mock response
-            mock_response = AsyncMock()
-            mock_response.json = AsyncMock(return_value=mock_response_json)
+            # Create proper mock response - use Mock instead of AsyncMock for response
+            from unittest.mock import Mock
+            mock_response = Mock()
+            mock_response.json.return_value = mock_response_json
             mock_response.text = str(mock_response_json)
-            mock_response.raise_for_status = AsyncMock()
+            mock_response.raise_for_status.return_value = None
 
-            # Configure the client mock properly
-            mock_client_instance = AsyncMock()
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get = AsyncMock(return_value=mock_response)
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
 
-            with patch.object(self.source, "_rate_limit", new_callable=AsyncMock):
+            with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_doi("10.1000/123")
 
             assert isinstance(result, LookupResult)
@@ -238,16 +236,14 @@ class TestOpenAlexSource:
 
         with patch("httpx.AsyncClient") as mock_client:
             # Create proper mock response
-            mock_response_obj = AsyncMock()
-            mock_response_obj.json = AsyncMock(return_value=mock_response)
-            mock_response_obj.raise_for_status = AsyncMock()
+            from unittest.mock import Mock
+            mock_response_obj = Mock()
+            mock_response_obj.json.return_value = mock_response
+            mock_response_obj.raise_for_status.return_value = None
 
-            # Configure the client mock properly
-            mock_client_instance = AsyncMock()
-            mock_client.return_value.__aenter__.return_value = mock_client_instance
-            mock_client_instance.get = AsyncMock(return_value=mock_response_obj)
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
 
-            with patch.object(self.source, "_rate_limit", new_callable=AsyncMock):
+            with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_doi("10.1000/123")
 
             assert isinstance(result, LookupResult)
@@ -287,14 +283,13 @@ class TestOpenAlexSource:
         }
 
         with patch("httpx.AsyncClient") as mock_client:
-            mock_response_obj = AsyncMock()
+            from unittest.mock import Mock
+            mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.text = str(mock_response)
             mock_response_obj.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = (
-                mock_response_obj
-            )
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_pmid("12345678")
@@ -321,14 +316,13 @@ class TestOpenAlexSource:
         }
 
         with patch("httpx.AsyncClient") as mock_client:
-            mock_response_obj = AsyncMock()
+            from unittest.mock import Mock
+            mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.text = str(mock_response)
             mock_response_obj.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = (
-                mock_response_obj
-            )
+            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 results = await self.source.lookup_by_title_author(
