@@ -18,6 +18,9 @@ from ..rules import get_registry
 from ..sources.registry import get_registry as get_source_registry
 from ..sources.crossref import CrossRefSource
 from ..sources.semantic_scholar import SemanticScholarSource
+from ..sources.arxiv import ArxivSource
+from ..sources.pubmed import PubMedSource
+from ..sources.openalex import OpenAlexSource
 from ..sources.reconciliation import DataReconciler
 from ..utils.identifiers import IdentifierExtractor
 from ..utils.cache import cleanup_cache, clear_cache, get_cache_statistics
@@ -264,6 +267,18 @@ def enhance(
         # Register Semantic Scholar
         s2 = SemanticScholarSource(api_key=api_key)
         source_registry.register_source(s2)
+
+        # Register arXiv
+        arxiv = ArxivSource(email=email)
+        source_registry.register_source(arxiv)
+
+        # Register PubMed
+        pubmed = PubMedSource(email=email, api_key=api_key)
+        source_registry.register_source(pubmed)
+
+        # Register OpenAlex
+        openalex = OpenAlexSource(email=email)
+        source_registry.register_source(openalex)
 
         # Parse source filter
         source_filter = None
