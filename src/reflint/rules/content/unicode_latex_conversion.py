@@ -1,6 +1,5 @@
 """Unicode to LaTeX character conversion rule."""
 
-import re
 from typing import ClassVar
 
 from ...core.validation import RuleViolation
@@ -20,17 +19,17 @@ class UnicodeLatexConversionRule(BaseRule):
         # Scandinavian characters
         "å": r"{\aa}",
         "Å": r"{\AA}",
-        "ä": r'{\"a}',
-        "Ä": r'{\"A}',
-        "ö": r'{\"o}',
-        "Ö": r'{\"O}',
+        "ä": r"{\"a}",
+        "Ä": r"{\"A}",
+        "ö": r"{\"o}",
+        "Ö": r"{\"O}",
         "æ": r"{\ae}",
         "Æ": r"{\AE}",
         "ø": r"{\o}",
         "Ø": r"{\O}",
         # German characters
-        "ü": r'{\"u}',
-        "Ü": r'{\"U}',
+        "ü": r"{\"u}",
+        "Ü": r"{\"U}",
         "ß": r"{\ss}",
         # French characters
         "à": r"{\`a}",
@@ -49,12 +48,12 @@ class UnicodeLatexConversionRule(BaseRule):
         "É": r"{\'E}",
         "ê": r"{\^e}",
         "Ê": r"{\^E}",
-        "ë": r'{\"e}',
-        "Ë": r'{\"E}',
+        "ë": r"{\"e}",
+        "Ë": r"{\"E}",
         "î": r"{\^i}",
         "Î": r"{\^I}",
-        "ï": r'{\"i}',
-        "Ï": r'{\"I}',
+        "ï": r"{\"i}",
+        "Ï": r"{\"I}",
         "ô": r"{\^o}",
         "Ô": r"{\^O}",
         "ù": r"{\`u}",
@@ -63,8 +62,8 @@ class UnicodeLatexConversionRule(BaseRule):
         "Ú": r"{\'U}",
         "û": r"{\^u}",
         "Û": r"{\^U}",
-        "ÿ": r'{\"y}',
-        "Ÿ": r'{\"Y}',
+        "ÿ": r"{\"y}",
+        "Ÿ": r"{\"Y}",
         # Spanish characters
         "ñ": r"{\~n}",
         "Ñ": r"{\~N}",
@@ -180,11 +179,11 @@ class UnicodeLatexConversionRule(BaseRule):
         # Quotation marks
         "\u201c": r"``",  # left double quotation mark
         "\u201d": r"''",  # right double quotation mark
-        "\u2018": r"`",   # left single quotation mark
-        "\u2019": r"'",   # right single quotation mark
+        "\u2018": r"`",  # left single quotation mark
+        "\u2019": r"'",  # right single quotation mark
         # En/em dashes
         "\u2013": r"--",  # en dash
-        "\u2014": r"---", # em dash
+        "\u2014": r"---",  # em dash
         # Common encoding issues
         "Ã¡": "\u00e1",  # á encoded as UTF-8 then decoded as Latin-1
         "Ã©": "\u00e9",  # é encoded as UTF-8 then decoded as Latin-1
@@ -259,4 +258,3 @@ class UnicodeLatexConversionRule(BaseRule):
                 converted_text = converted_text.replace(unicode_char, latex_equiv)
 
         return converted_text, conversions
-

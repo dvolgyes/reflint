@@ -1,6 +1,8 @@
 """Tests for Unicode to LaTeX conversion rule."""
 
-from src.reflint.rules.content.unicode_latex_conversion import UnicodeLatexConversionRule
+from src.reflint.rules.content.unicode_latex_conversion import (
+    UnicodeLatexConversionRule,
+)
 from src.reflint.core.entry import BibTeXEntry
 
 
@@ -28,11 +30,16 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        assert r"{\AA}rsrapport fr{\aa}n Bj{\"o}rn {\AA}kesson" in title_result.suggested_fix
+        assert (
+            r"{\AA}rsrapport fr{\aa}n Bj{\"o}rn {\AA}kesson"
+            in title_result.suggested_fix
+        )
 
         # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        assert r"{\O}ivind S{\o}rensen and {\AA}se H{\"a}gg" in author_result.suggested_fix
+        assert (
+            r"{\O}ivind S{\o}rensen and {\AA}se H{\"a}gg" in author_result.suggested_fix
+        )
 
     def test_german_characters(self):
         """Test conversion of German characters."""
@@ -51,11 +58,13 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        assert r'{\"U}ber die Gr{\"o}{\ss}e der L{\"o}sung' in title_result.suggested_fix
+        assert (
+            r"{\"U}ber die Gr{\"o}{\ss}e der L{\"o}sung" in title_result.suggested_fix
+        )
 
         # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        assert r'M{\"u}ller, G{\"u}nther' in author_result.suggested_fix
+        assert r"M{\"u}ller, G{\"u}nther" in author_result.suggested_fix
 
     def test_french_characters(self):
         """Test conversion of French characters."""
@@ -74,12 +83,14 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        expected_title = r'{\'E}tude th{\'e}orique des ph{\'e}nom{\`e}nes {\'e}lectriques'
+        expected_title = (
+            r"{\'E}tude th{\'e}orique des ph{\'e}nom{\`e}nes {\'e}lectriques"
+        )
         assert expected_title in title_result.suggested_fix
 
         # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        assert r'Fran{\c c}ois Lef{\`e}vre' in author_result.suggested_fix
+        assert r"Fran{\c c}ois Lef{\`e}vre" in author_result.suggested_fix
 
     def test_spanish_characters(self):
         """Test conversion of Spanish characters."""
@@ -98,11 +109,13 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        assert r'Investigaci{\'o}n sobre la comunicaci{\'o}n' in title_result.suggested_fix
+        assert (
+            r"Investigaci{\'o}n sobre la comunicaci{\'o}n" in title_result.suggested_fix
+        )
 
         # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        assert r'Jos{\'e} Mar{\'i}a Pe{\~n}a' in author_result.suggested_fix
+        assert r"Jos{\'e} Mar{\'i}a Pe{\~n}a" in author_result.suggested_fix
 
     def test_mathematical_symbols(self):
         """Test conversion of mathematical symbols."""
@@ -121,12 +134,16 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        expected = r'Analysis of $\alpha$-particles and $\beta$-decay using $\mu$-detectors'
+        expected = (
+            r"Analysis of $\alpha$-particles and $\beta$-decay using $\mu$-detectors"
+        )
         assert expected in title_result.suggested_fix
 
         # Check abstract conversion
         abstract_result = next(r for r in results if r.field == "abstract")
-        expected_abstract = r'Temperature increased by 25$^\circ$ with $\pm$ 2$^\circ$ uncertainty'
+        expected_abstract = (
+            r"Temperature increased by 25$^\circ$ with $\pm$ 2$^\circ$ uncertainty"
+        )
         assert expected_abstract in abstract_result.suggested_fix
 
     def test_quotation_marks(self):
@@ -151,7 +168,9 @@ class TestUnicodeLatexConversionRule:
     def test_dashes(self):
         """Test conversion of en-dash and em-dash."""
         # Use Unicode escape sequences for dashes
-        title_text = "Pages 100\u2013110 \u2014 A comprehensive study"  # en-dash and em-dash
+        title_text = (
+            "Pages 100\u2013110 \u2014 A comprehensive study"  # en-dash and em-dash
+        )
         entry = BibTeXEntry(
             {
                 "ID": "test",
@@ -184,12 +203,12 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        expected = r'Studie o mo{\v z}nostech {\v c}esk{\'e}ho v{\'y}zkumu'
+        expected = r"Studie o mo{\v z}nostech {\v c}esk{\'e}ho v{\'y}zkumu"
         assert expected in title_result.suggested_fix
 
         # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        expected_author = r'V{\'a}clav Nov{\'a}k and Petr Dvo{\v r}{\'a}k'
+        expected_author = r"V{\'a}clav Nov{\'a}k and Petr Dvo{\v r}{\'a}k"
         assert expected_author in author_result.suggested_fix
 
     def test_polish_characters(self):
@@ -209,12 +228,12 @@ class TestUnicodeLatexConversionRule:
 
         # Check title conversion
         title_result = next(r for r in results if r.field == "title")
-        expected = r'Badania nad wp{\l}ywem {\'s}rodowiska'
+        expected = r"Badania nad wp{\l}ywem {\'s}rodowiska"
         assert expected in title_result.suggested_fix
 
-        # Check author conversion  
+        # Check author conversion
         author_result = next(r for r in results if r.field == "author")
-        expected_author = r'Pawe{\l} Kowalski and {\L}ukasz Zieli{\'n}ski'
+        expected_author = r"Pawe{\l} Kowalski and {\L}ukasz Zieli{\'n}ski"
         assert expected_author in author_result.suggested_fix
 
     def test_no_unicode_characters(self):
@@ -235,7 +254,9 @@ class TestUnicodeLatexConversionRule:
     def test_mixed_characters(self):
         """Test conversion with mixed character types."""
         # Use Unicode escape sequences for problematic characters
-        title_text = "Über α-radiation at 25° in \u201cmodern\u201d physics \u2014 a review"
+        title_text = (
+            "Über α-radiation at 25° in \u201cmodern\u201d physics \u2014 a review"
+        )
         entry = BibTeXEntry(
             {
                 "ID": "test",
@@ -252,19 +273,19 @@ class TestUnicodeLatexConversionRule:
         # Check title has multiple conversions
         title_result = next(r for r in results if r.field == "title")
         suggested = title_result.suggested_fix
-        assert r'{\"U}ber' in suggested  # German
-        assert r'$\alpha$' in suggested  # Greek
-        assert r'$^\circ$' in suggested  # Degree symbol
-        assert r'``modern''' in suggested  # Smart quotes
-        assert r'---' in suggested  # Em dash
+        assert r"{\"U}ber" in suggested  # German
+        assert r"$\alpha$" in suggested  # Greek
+        assert r"$^\circ$" in suggested  # Degree symbol
+        assert r"``modern" "" in suggested  # Smart quotes
+        assert r"---" in suggested  # Em dash
 
         # Check author has multiple conversions
         author_result = next(r for r in results if r.field == "author")
         suggested_author = author_result.suggested_fix
-        assert r'Fran{\c c}ois' in suggested_author  # French
-        assert r'M{\"u}ller' in suggested_author  # German
-        assert r'Jos{\'e}' in suggested_author  # Spanish
-        assert r'{\AA}kesson' in suggested_author  # Scandinavian
+        assert r"Fran{\c c}ois" in suggested_author  # French
+        assert r"M{\"u}ller" in suggested_author  # German
+        assert r"Jos{\'e}" in suggested_author  # Spanish
+        assert r"{\AA}kesson" in suggested_author  # Scandinavian
 
     def test_conversion_details_in_message(self):
         """Test that conversion details are included in the message."""
@@ -284,14 +305,13 @@ class TestUnicodeLatexConversionRule:
         assert "é" in result.message
         assert r"{\'e}" in result.message
         assert "ü" in result.message
-        assert r'{\"u}' in result.message
-
+        assert r"{\"u}" in result.message
 
     def test_field_coverage(self):
         """Test that all relevant fields are checked for Unicode."""
         fields_to_test = [
             "title",
-            "author", 
+            "author",
             "journal",
             "booktitle",
             "publisher",
@@ -339,13 +359,13 @@ class TestUnicodeLatexConversionRule:
 
         result = results[0]
         suggested = result.suggested_fix
-        assert r'$\Omega$' in suggested
-        assert r'$\alpha$' in suggested
-        assert r'$\beta$' in suggested
-        assert r'$\gamma$' in suggested
-        assert r'$\sigma$' in suggested
-        assert r'$\approx$' in suggested
-        assert r'$\times$' in suggested
+        assert r"$\Omega$" in suggested
+        assert r"$\alpha$" in suggested
+        assert r"$\beta$" in suggested
+        assert r"$\gamma$" in suggested
+        assert r"$\sigma$" in suggested
+        assert r"$\approx$" in suggested
+        assert r"$\times$" in suggested
 
     def test_empty_and_none_fields(self):
         """Test handling of empty and None field values."""
