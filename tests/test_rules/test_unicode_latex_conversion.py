@@ -2,6 +2,8 @@
 
 from src.reflint.rules.content.unicode_latex_conversion import (
     UnicodeLatexConversionRule,
+    QuoteStyle,
+    create_unicode_rule,
 )
 from src.reflint.core.entry import BibTeXEntry
 
@@ -11,7 +13,7 @@ class TestUnicodeLatexConversionRule:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.rule = UnicodeLatexConversionRule()
+        self.rule = UnicodeLatexConversionRule()  # Default quote style
 
     def test_scandinavian_characters(self):
         """Test conversion of Scandinavian characters."""
@@ -401,3 +403,116 @@ class TestUnicodeLatexConversionRule:
         assert len(results) == 1
         # The Ã¡ should be converted to á first, then á to LaTeX
         assert r"{\'a}" in results[0].suggested_fix
+
+    def test_configurable_quote_styles(self):
+        """Test different quote conversion styles."""
+        # Test text with both double and single quotes
+        title_text = "\u201cDouble\u201d quotes and \u2018single\u2019 quotes"
+        entry = BibTeXEntry(
+            {
+                "ID": "test",
+                "ENTRYTYPE": "article",
+                "title": title_text,
+            }
+        )
+
+        # Test LaTeX traditional style (default)
+        rule_traditional = UnicodeLatexConversionRule(QuoteStyle.LATEX_TRADITIONAL)
+        results = rule_traditional.validate(entry)
+        assert len(results) == 1
+        assert "``Double'' quotes and `single' quotes" in results[0].suggested_fix
+
+        # Test LaTeX csquotes style
+        rule_csquotes = UnicodeLatexConversionRule(QuoteStyle.LATEX_CSQUOTES)
+        results = rule_csquotes.validate(entry)
+        assert len(results) == 1
+        suggested = results[0].suggested_fix
+        assert r"\enquote{Double} quotes and \enquote*{single} quotes" in suggested
+
+        # Test Unicode preserve style
+        rule_preserve = UnicodeLatexConversionRule(QuoteStyle.UNICODE_PRESERVE)
+        results = rule_preserve.validate(entry)
+        assert len(results) == 0  # No conversion needed, quotes preserved
+
+        # Test ASCII straight style
+        rule_ascii = UnicodeLatexConversionRule(QuoteStyle.ASCII_STRAIGHT)
+        results = rule_ascii.validate(entry)
+        assert len(results) == 1
+        assert '"Double" quotes and \'single\' quotes' in results[0].suggested_fix
+
+    def test_create_unicode_rule_factory(self):
+        """Test the factory function for creating rules with different styles."""
+        # Test default style
+        rule_default = create_unicode_rule()
+        assert rule_default.quote_style == QuoteStyle.LATEX_TRADITIONAL
+
+        # Test explicit styles
+        rule_csquotes = create_unicode_rule("latex-csquotes")
+        assert rule_csquotes.quote_style == QuoteStyle.LATEX_CSQUOTES
+
+        rule_preserve = create_unicode_rule("unicode-preserve")
+        assert rule_preserve.quote_style == QuoteStyle.UNICODE_PRESERVE
+
+        rule_ascii = create_unicode_rule("ascii-straight")
+        assert rule_ascii.quote_style == QuoteStyle.ASCII_STRAIGHT
+
+        # Test invalid style
+        try:
+            create_unicode_rule("invalid-style")
+            assert False, "Should have raised ValueError"
+        except ValueError as e:
+            assert "Unknown quote style" in str(e)
+
+    def test_quote_style_integration(self):
+        """Test that quote styles work correctly in mixed content."""
+        title_text = "Study of \u201cmodern\u201d methods using α-particles"
+        entry = BibTeXEntry(
+            {
+                "ID": "test",
+                "ENTRYTYPE": "article",
+                "title": title_text,
+            }
+        )
+
+        # Traditional LaTeX style
+        rule_traditional = create_unicode_rule("latex-traditional")
+        results = rule_traditional.validate(entry)
+        assert len(results) == 1
+        suggested = results[0].suggested_fix
+        assert "``modern''" in suggested
+        assert r"$\alpha$" in suggested
+
+        # csquotes style
+        rule_csquotes = create_unicode_rule("latex-csquotes")
+        results = rule_csquotes.validate(entry)
+        assert len(results) == 1
+        suggested = results[0].suggested_fix
+        assert r"\enquote{modern}" in suggested
+        assert r"$\alpha$" in suggested
+
+    def test_quote_conversion_message_details(self):
+        """Test that quote conversion details are shown in messages."""
+        title_text = "\u201cTest\u201d with \u2018quotes\u2019"
+        entry = BibTeXEntry(
+            {
+                "ID": "test",
+                "ENTRYTYPE": "article",
+                "title": title_text,
+            }
+        )
+
+        # Traditional style
+        rule = create_unicode_rule("latex-traditional")
+        results = rule.validate(entry)
+        assert len(results) == 1
+        message = results[0].message
+
+        # Check that conversion details are in the message
+        assert "\u201c" in message  # Original Unicode char
+        assert "``" in message     # LaTeX equivalent
+        assert "\u201d" in message  # Original Unicode char
+        assert "''" in message     # LaTeX equivalent
+        assert "\u2018" in message  # Original Unicode char
+        assert "`" in message      # LaTeX equivalent
+        assert "\u2019" in message  # Original Unicode char
+        assert "'" in message      # LaTeX equivalent
