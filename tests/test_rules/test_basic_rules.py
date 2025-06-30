@@ -96,10 +96,14 @@ class TestDateValidationRule:
             violations = rule.validate(entry)
             # Numeric months should have no violations
             if month in ["1", "01"]:
-                assert len(violations) == 0, f"Numeric month '{month}' should have no violations"
+                assert len(violations) == 0, (
+                    f"Numeric month '{month}' should have no violations"
+                )
             else:
                 # Text months should only have normalization suggestions (info level)
-                assert len(violations) == 1, f"Text month '{month}' should have normalization suggestion"
+                assert len(violations) == 1, (
+                    f"Text month '{month}' should have normalization suggestion"
+                )
                 assert violations[0].severity == "info"
                 assert "normalizing month" in violations[0].message
 

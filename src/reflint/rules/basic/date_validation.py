@@ -16,7 +16,9 @@ class DateValidationRule(FieldValidationRule):
     rule_id: ClassVar[str] = "D001"
     severity: ClassVar[str] = "warning"
     category: ClassVar[str] = "content"
-    description: ClassVar[str] = "Date fields must be properly formatted and valid with coherence checking"
+    description: ClassVar[str] = (
+        "Date fields must be properly formatted and valid with coherence checking"
+    )
 
     def __init__(self) -> None:
         super().__init__("year")  # Primary field to check
@@ -32,9 +34,17 @@ class DateValidationRule(FieldValidationRule):
         day_value = entry.get_field("day") if entry.has_field("day") else None
 
         # Parse date components
-        year_int = self._parse_year(year_value) if year_value and year_value.strip() else None
-        month_int = self._parse_month(month_value) if month_value and month_value.strip() else None
-        day_int = self._parse_day(day_value) if day_value and day_value.strip() else None
+        year_int = (
+            self._parse_year(year_value) if year_value and year_value.strip() else None
+        )
+        month_int = (
+            self._parse_month(month_value)
+            if month_value and month_value.strip()
+            else None
+        )
+        day_int = (
+            self._parse_day(day_value) if day_value and day_value.strip() else None
+        )
 
         # Individual field validation
         if year_value is not None:
@@ -71,7 +81,7 @@ class DateValidationRule(FieldValidationRule):
     def _parse_month(self, month_str: str) -> int | None:
         """Parse month string to integer (1-12)."""
         month_clean = month_str.strip("{}").strip().lower()
-        
+
         # Direct number
         if month_clean.isdigit():
             month_int = int(month_clean)
@@ -79,18 +89,29 @@ class DateValidationRule(FieldValidationRule):
 
         # Month name mapping
         month_map = {
-            "january": 1, "jan": 1,
-            "february": 2, "feb": 2,
-            "march": 3, "mar": 3,
-            "april": 4, "apr": 4,
+            "january": 1,
+            "jan": 1,
+            "february": 2,
+            "feb": 2,
+            "march": 3,
+            "mar": 3,
+            "april": 4,
+            "apr": 4,
             "may": 5,
-            "june": 6, "jun": 6,
-            "july": 7, "jul": 7,
-            "august": 8, "aug": 8,
-            "september": 9, "sep": 9,
-            "october": 10, "oct": 10,
-            "november": 11, "nov": 11,
-            "december": 12, "dec": 12,
+            "june": 6,
+            "jun": 6,
+            "july": 7,
+            "jul": 7,
+            "august": 8,
+            "aug": 8,
+            "september": 9,
+            "sep": 9,
+            "october": 10,
+            "oct": 10,
+            "november": 11,
+            "nov": 11,
+            "december": 12,
+            "dec": 12,
         }
 
         return month_map.get(month_clean)
@@ -103,7 +124,9 @@ class DateValidationRule(FieldValidationRule):
             return day_int if 1 <= day_int <= 31 else None
         return None
 
-    def _validate_year_field(self, year_str: str, year_int: int | None) -> list[RuleViolation]:
+    def _validate_year_field(
+        self, year_str: str, year_int: int | None
+    ) -> list[RuleViolation]:
         """Validate year field with advanced range checking."""
         violations: list[RuleViolation] = []
 
@@ -153,7 +176,9 @@ class DateValidationRule(FieldValidationRule):
 
         return violations
 
-    def _validate_month_field(self, month_str: str, month_int: int | None) -> list[RuleViolation]:
+    def _validate_month_field(
+        self, month_str: str, month_int: int | None
+    ) -> list[RuleViolation]:
         """Validate month field."""
         violations: list[RuleViolation] = []
 
@@ -170,7 +195,9 @@ class DateValidationRule(FieldValidationRule):
 
         return violations
 
-    def _validate_day_field(self, day_str: str, day_int: int | None) -> list[RuleViolation]:
+    def _validate_day_field(
+        self, day_str: str, day_int: int | None
+    ) -> list[RuleViolation]:
         """Validate day field."""
         violations: list[RuleViolation] = []
 
@@ -187,7 +214,9 @@ class DateValidationRule(FieldValidationRule):
 
         return violations
 
-    def _validate_date_coherence(self, year_int: int | None, month_int: int | None, day_int: int | None) -> list[RuleViolation]:
+    def _validate_date_coherence(
+        self, year_int: int | None, month_int: int | None, day_int: int | None
+    ) -> list[RuleViolation]:
         """Validate coherence between date fields."""
         violations: list[RuleViolation] = []
 
@@ -210,10 +239,11 @@ class DateValidationRule(FieldValidationRule):
 
                 # Check for reasonable date (not too far in the future)
                 from datetime import date
+
                 try:
                     entry_date = date(year_int, month_int, day_int)
                     current_date = date.today()
-                    
+
                     if entry_date > current_date:
                         violations.append(
                             RuleViolation(
@@ -234,22 +264,24 @@ class DateValidationRule(FieldValidationRule):
 
         return violations
 
-    def _suggest_month_normalization(self, month_str: str, month_int: int) -> list[RuleViolation]:
+    def _suggest_month_normalization(
+        self, month_str: str, month_int: int
+    ) -> list[RuleViolation]:
         """Suggest month normalization to numeric format."""
         violations: list[RuleViolation] = []
-        
+
         month_clean = month_str.strip("{}").strip()
-        
+
         # If month is already numeric, no suggestion needed
         if month_clean.isdigit():
             return violations
-            
+
         # Suggest numeric format for non-numeric months
         violations.append(
             RuleViolation(
                 rule_id=self.rule_id,
                 severity="info",
-                message=f"Consider normalizing month to numeric format",
+                message="Consider normalizing month to numeric format",
                 field="month",
                 suggested_fix=str(month_int),
             )

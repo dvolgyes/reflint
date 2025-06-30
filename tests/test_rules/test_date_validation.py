@@ -48,7 +48,7 @@ class TestAdvancedDateValidationRule:
             )
 
             results = self.rule.validate(entry)
-            
+
             if expected_severity == 0:
                 # Should only have month normalization suggestion
                 year_violations = [r for r in results if r.field == "year"]
@@ -85,9 +85,15 @@ class TestAdvancedDateValidationRule:
     def test_month_validation(self):
         """Test month field validation."""
         valid_months = [
-            "1", "01", "12",  # Numeric
-            "January", "Feb", "march",  # Name variants
-            "JAN", "feb", "DEC",  # Case variants
+            "1",
+            "01",
+            "12",  # Numeric
+            "January",
+            "Feb",
+            "march",  # Name variants
+            "JAN",
+            "feb",
+            "DEC",  # Case variants
         ]
 
         for month in valid_months:
@@ -101,14 +107,16 @@ class TestAdvancedDateValidationRule:
             )
 
             results = self.rule.validate(entry)
-            month_violations = [r for r in results if r.field == "month" and r.severity != "info"]
+            month_violations = [
+                r for r in results if r.field == "month" and r.severity != "info"
+            ]
             assert len(month_violations) == 0
 
     def test_invalid_month_format(self):
         """Test invalid month formats."""
         invalid_months = [
             "13",  # Invalid number
-            "0",   # Invalid number
+            "0",  # Invalid number
             "Janurary",  # Misspelled
             "Month1",  # Invalid format
         ]
@@ -124,14 +132,16 @@ class TestAdvancedDateValidationRule:
             )
 
             results = self.rule.validate(entry)
-            month_violations = [r for r in results if r.field == "month" and r.severity != "info"]
+            month_violations = [
+                r for r in results if r.field == "month" and r.severity != "info"
+            ]
             assert len(month_violations) == 1
             assert "Invalid month format" in month_violations[0].message
 
     def test_day_validation(self):
         """Test day field validation."""
         valid_days = ["1", "15", "31"]
-        
+
         for day in valid_days:
             entry = BibTeXEntry(
                 {
@@ -151,7 +161,7 @@ class TestAdvancedDateValidationRule:
         """Test invalid day formats."""
         invalid_days = [
             "32",  # Too high
-            "0",   # Too low
+            "0",  # Too low
             "day1",  # Invalid format
             "first",  # Text
         ]
@@ -235,7 +245,9 @@ class TestAdvancedDateValidationRule:
         )
 
         results = self.rule.validate(entry)
-        normalization_suggestions = [r for r in results if "normalizing month" in r.message]
+        normalization_suggestions = [
+            r for r in results if "normalizing month" in r.message
+        ]
         assert len(normalization_suggestions) == 0
 
         # Test that named months get normalization suggestions
@@ -249,7 +261,9 @@ class TestAdvancedDateValidationRule:
         )
 
         results = self.rule.validate(entry)
-        normalization_suggestions = [r for r in results if "normalizing month" in r.message]
+        normalization_suggestions = [
+            r for r in results if "normalizing month" in r.message
+        ]
         assert len(normalization_suggestions) == 1
         assert normalization_suggestions[0].suggested_fix == "6"
 
@@ -257,8 +271,9 @@ class TestAdvancedDateValidationRule:
         """Test detection of future dates."""
         # Create a future date
         import datetime
+
         future_year = datetime.datetime.now().year + 1
-        
+
         entry = BibTeXEntry(
             {
                 "ID": "test",
@@ -286,14 +301,18 @@ class TestAdvancedDateValidationRule:
         )
 
         results = self.rule.validate(entry)
-        
+
         # Should parse correctly despite braces
-        year_violations = [r for r in results if r.field == "year" and r.severity != "info"]
+        year_violations = [
+            r for r in results if r.field == "year" and r.severity != "info"
+        ]
         assert len(year_violations) == 0
-        
-        month_violations = [r for r in results if r.field == "month" and r.severity != "info"]
+
+        month_violations = [
+            r for r in results if r.field == "month" and r.severity != "info"
+        ]
         assert len(month_violations) == 0
-        
+
         day_violations = [r for r in results if r.field == "day"]
         assert len(day_violations) == 0
 
