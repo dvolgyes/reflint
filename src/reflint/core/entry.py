@@ -63,3 +63,11 @@ class BibTeXEntry:
     def __repr__(self) -> str:
         """Detailed representation."""
         return f"BibTeXEntry(key='{self.key}', type='{self.entry_type}', fields={len(self.fields)})"
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary representation."""
+        return dict(self._entry)
+
+    def get_all_fields(self) -> list[str]:
+        """Get list of all field names."""
+        return [k for k in self._entry.keys() if k not in ["ID", "ENTRYTYPE"]]

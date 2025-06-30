@@ -1,14 +1,27 @@
 """Command-line interface commands."""
 
+import asyncio
 from pathlib import Path
 import sys
+from typing import TYPE_CHECKING
 
 import click
 from loguru import logger
 
+if TYPE_CHECKING:
+    from ..sources.registry import DataSourceRegistry
+    from ..core.entry import BibTeXEntry
+
 from ..core.processor import BibTeXProcessor
 from ..core.validation import ValidationResult
 from ..rules import get_registry
+from ..sources.registry import get_registry as get_source_registry
+from ..sources.crossref import CrossRefSource
+from ..sources.semantic_scholar import SemanticScholarSource
+from ..sources.reconciliation import DataReconciler
+from ..utils.identifiers import IdentifierExtractor
+from ..utils.cache import cleanup_cache, clear_cache, get_cache_statistics
+from ..utils.network import LinkChecker
 
 
 @click.group()
@@ -197,11 +210,299 @@ def _display_validation_results(
 
 
 @cli.command()
+@click.argument("input_file", type=click.Path(exists=True), required=False)
+@click.option("--output", "-o", type=click.Path(), help="Output file path")
+@click.option("--stdin", is_flag=True, help="Read from stdin instead of file")
+@click.option("--sources", help="Comma-separated list of data sources to use")
+@click.option("--cache-ttl", type=int, default=86400, help="Cache TTL in seconds")
+@click.option("--email", help="Email for API requests (recommended)")
+@click.option("--api-key", help="API key for enhanced access")
+@click.option(
+    "--dry-run", is_flag=True, help="Show what would be enhanced without making changes"
+)
+@click.pass_context
+def enhance(
+    ctx: click.Context,
+    input_file: str | None,
+    output: str | None,
+    stdin: bool,
+    sources: str | None,
+    cache_ttl: int,
+    email: str | None,
+    api_key: str | None,
+    dry_run: bool,
+) -> None:
+    """Enhance BibTeX entries with external data sources."""
+
+    if stdin and input_file:
+        click.echo("Error: Cannot specify both input file and --stdin", err=True)
+        sys.exit(1)
+
+    if not stdin and not input_file:
+        click.echo("Error: Must specify either input file or --stdin", err=True)
+        sys.exit(1)
+
+    processor = BibTeXProcessor()
+
+    try:
+        # Load entries
+        if stdin:
+            processor.load_from_stdin()
+        else:
+            assert input_file is not None
+            processor.load_from_file(Path(input_file))
+
+        logger.info(f"Loaded {processor.get_entry_count()} entries")
+
+        # Initialize data sources
+        source_registry = get_source_registry()
+
+        # Register CrossRef
+        crossref = CrossRefSource(email=email)
+        source_registry.register_source(crossref)
+
+        # Register Semantic Scholar
+        s2 = SemanticScholarSource(api_key=api_key)
+        source_registry.register_source(s2)
+
+        # Parse source filter
+        source_filter = None
+        if sources:
+            source_filter = [s.strip() for s in sources.split(",")]
+
+        # Run enhancement
+        asyncio.run(
+            _enhance_entries_async(processor, source_registry, source_filter, dry_run)
+        )
+
+        # Output processed file if requested and not dry run
+        if output and not dry_run:
+            processor.save_to_file(Path(output))
+            click.echo(f"Enhanced entries written to {output}")
+        elif not dry_run:
+            processor.save_to_stdout()
+
+    except Exception as e:
+        logger.error(f"Enhancement failed: {e}")
+        sys.exit(1)
+
+
+async def _enhance_entries_async(
+    processor: BibTeXProcessor,
+    source_registry: "DataSourceRegistry",
+    source_filter: list[str] | None,
+    dry_run: bool,
+) -> None:
+    """Enhance entries asynchronously."""
+    extractor = IdentifierExtractor()
+    reconciler = DataReconciler()
+
+    enhanced_count = 0
+    total_entries = processor.get_entry_count()
+
+    try:
+        for entry in processor.entries:
+            click.echo(f"Processing entry: {entry.key}")
+
+            # Extract identifiers
+            identifiers = extractor.extract_from_entry(entry)
+            if not identifiers:
+                click.echo("  No identifiers found, skipping")
+                continue
+
+            # Look up data from external sources
+            all_results = []
+            for identifier in identifiers:
+                if identifier.confidence < 0.7:  # Skip low-confidence identifiers
+                    continue
+
+                try:
+                    results = await source_registry.lookup_with_fallback(
+                        identifier.identifier_type,
+                        identifier.value,
+                        preferred_sources=source_filter,
+                    )
+                    all_results.extend(results)
+                except Exception as e:
+                    logger.warning(
+                        f"Lookup failed for {identifier.identifier_type}:{identifier.value}: {e}"
+                    )
+
+            if not all_results:
+                click.echo("  No external data found")
+                continue
+
+            # Reconcile data
+            reconciled = reconciler.reconcile(all_results, entry)
+
+            click.echo(f"  Found data from {len(reconciled.sources_used)} sources")
+            click.echo(f"  Confidence: {reconciled.confidence_score:.2f}")
+            click.echo(f"  Completeness: {reconciled.completeness_score:.2f}")
+
+            if reconciled.conflicts:
+                click.echo(f"  Conflicts resolved: {len(reconciled.conflicts)}")
+
+            if dry_run:
+                click.echo("  [DRY RUN] Would update entry")
+            else:
+                # Update the entry
+                processor.entries[processor.entries.index(entry)] = reconciled.entry
+                enhanced_count += 1
+
+    finally:
+        # Close sources
+        for source in source_registry.get_all_sources():
+            if hasattr(source, "close"):
+                await source.close()
+
+    if not dry_run:
+        click.echo(
+            f"\nEnhancement complete: {enhanced_count}/{total_entries} entries updated"
+        )
+    else:
+        click.echo(
+            f"\nDry run complete: would update {enhanced_count}/{total_entries} entries"
+        )
+
+
+@cli.command()
+@click.argument("input_file", type=click.Path(exists=True), required=False)
+@click.option("--stdin", is_flag=True, help="Read from stdin instead of file")
+@click.option(
+    "--max-concurrent", type=int, default=10, help="Maximum concurrent requests"
+)
+@click.pass_context
+def check_links(
+    ctx: click.Context,
+    input_file: str | None,
+    stdin: bool,
+    max_concurrent: int,
+) -> None:
+    """Check URL accessibility in BibTeX entries."""
+
+    if stdin and input_file:
+        click.echo("Error: Cannot specify both input file and --stdin", err=True)
+        sys.exit(1)
+
+    if not stdin and not input_file:
+        click.echo("Error: Must specify either input file or --stdin", err=True)
+        sys.exit(1)
+
+    processor = BibTeXProcessor()
+
+    try:
+        # Load entries
+        if stdin:
+            processor.load_from_stdin()
+        else:
+            assert input_file is not None
+            processor.load_from_file(Path(input_file))
+
+        logger.info(f"Loaded {processor.get_entry_count()} entries")
+
+        # Run link checking
+        asyncio.run(_check_links_async(processor.entries, max_concurrent))
+
+    except Exception as e:
+        logger.error(f"Link checking failed: {e}")
+        sys.exit(1)
+
+
+async def _check_links_async(entries: list["BibTeXEntry"], max_concurrent: int) -> None:
+    """Check links asynchronously."""
+    link_checker = LinkChecker()
+
+    try:
+        report = await link_checker.get_broken_links_report(entries)
+
+        click.echo("\n" + "=" * 60)
+        click.echo("LINK CHECK REPORT")
+        click.echo("=" * 60)
+        click.echo(f"Total URLs checked: {report['total_urls_checked']}")
+        click.echo(f"Broken links found: {report['broken_links_count']}")
+
+        if report["broken_links"]:
+            click.echo("\nBROKEN LINKS:")
+            click.echo("-" * 15)
+
+            for broken in report["broken_links"]:
+                click.echo(f"Entry: {broken['entry_key']}")
+                click.echo(f"  URL: {broken['url']}")
+                click.echo(f"  Status: {click.style(broken['status'], fg='red')}")
+                if broken["error"]:
+                    click.echo(f"  Error: {broken['error']}")
+                click.echo()
+
+        # Summary
+        if report["broken_links_count"] == 0:
+            click.echo(click.style("All links are accessible!", fg="green", bold=True))
+        else:
+            click.echo(
+                click.style(
+                    f"{report['broken_links_count']} broken links found",
+                    fg="red",
+                    bold=True,
+                )
+            )
+
+    finally:
+        await link_checker.close()
+
+
+@cli.group()
+def cache() -> None:
+    """Manage API response cache."""
+    pass
+
+
+@cache.command()
+def stats() -> None:
+    """Show cache statistics."""
+    stats = get_cache_statistics()
+
+    click.echo("Cache Statistics")
+    click.echo("=" * 16)
+    click.echo(f"Total entries: {stats['total_entries']}")
+    click.echo(f"Total size: {stats['total_size_bytes']:,} bytes")
+    click.echo(f"Average size: {stats.get('average_size_bytes', 0):.1f} bytes")
+    click.echo(f"Expired entries: {stats['expired_entries']}")
+
+    if stats["by_source"]:
+        click.echo("\nBy Source:")
+        click.echo("-" * 10)
+        for source_stats in stats["by_source"]:
+            click.echo(
+                f"  {source_stats['source']}: {source_stats['count']} entries ({source_stats['total_size']:,} bytes)"
+            )
+
+
+@cache.command()
+@click.option("--source", help="Clear cache for specific source only")
+@click.confirmation_option(prompt="Are you sure you want to clear the cache?")
+def clear(source: str | None) -> None:
+    """Clear API response cache."""
+    cleared = clear_cache(source)
+    if source:
+        click.echo(f"Cleared {cleared} cache entries for source: {source}")
+    else:
+        click.echo(f"Cleared {cleared} cache entries")
+
+
+@cache.command()
+def cleanup() -> None:
+    """Remove expired cache entries."""
+    cleaned = cleanup_cache()
+    click.echo(f"Cleaned up {cleaned} expired cache entries")
+
+
+@cli.command()
 def info() -> None:
     """Show information about ReflInt."""
     click.echo("ReflInt: Comprehensive BibTeX Reference Checker and Fixer")
-    click.echo("Phase 2 - Rule-Based Validation System")
-    click.echo("Supports BibTeX validation with multiple rule types.")
+    click.echo("Phase 3 - External Data Integration")
+    click.echo(
+        "Supports BibTeX validation with multiple rule types and external data enhancement."
+    )
 
 
 @cli.command()
