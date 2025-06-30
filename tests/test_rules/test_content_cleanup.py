@@ -25,13 +25,16 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2  # title and abstract
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert "A study of machine learning and AI" in title_result.suggested_fix
         assert "removed XML tags" in title_result.message
 
         abstract_result = next(r for r in results if r.field == "abstract")
-        assert "This paper discusses deep learning approaches." in abstract_result.suggested_fix
+        assert (
+            "This paper discusses deep learning approaches."
+            in abstract_result.suggested_fix
+        )
 
     def test_html_entity_conversion(self):
         """Test conversion of HTML entities."""
@@ -47,7 +50,7 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert 'Research & Development in AI "Systems"' in title_result.suggested_fix
         assert "converted HTML entities" in title_result.message
@@ -69,7 +72,7 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert "A study with multiple spaces" in title_result.suggested_fix
         assert "normalized whitespace" in title_result.message
@@ -92,7 +95,7 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert "Titlewithzerowidthchars" in title_result.suggested_fix
         assert "removed invisible characters" in title_result.message
@@ -114,7 +117,7 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert "José María investigación with ñ" in title_result.suggested_fix
         assert "fixed encoding issues" in title_result.message
@@ -136,13 +139,19 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
-        assert "Title with  stray backslashes  but keep \\textbf{bold}" in title_result.suggested_fix
+        assert (
+            "Title with  stray backslashes  but keep \\textbf{bold}"
+            in title_result.suggested_fix
+        )
         assert "removed stray backslashes" in title_result.message
 
         abstract_result = next(r for r in results if r.field == "abstract")
-        assert "Abstract with \\alpha math and  random backslash" in abstract_result.suggested_fix
+        assert (
+            "Abstract with \\alpha math and  random backslash"
+            in abstract_result.suggested_fix
+        )
 
     def test_punctuation_pattern_fixes(self):
         """Test fixing of punctuation patterns."""
@@ -158,7 +167,7 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         assert "Title with...multiple dots!" in title_result.suggested_fix
         assert "fixed punctuation patterns" in title_result.message
@@ -187,7 +196,7 @@ class TestContentCleanupRule:
             )
 
             results = self.rule.validate(entry)
-            
+
             if expected_message:
                 # Should have ID violation
                 id_results = [r for r in results if r.field == "ID"]
@@ -213,11 +222,11 @@ class TestContentCleanupRule:
         results = self.rule.validate(entry)
 
         assert len(results) == 2
-        
+
         title_result = next(r for r in results if r.field == "title")
         suggested = title_result.suggested_fix
         assert "Title with & multiple issues..." in suggested
-        
+
         # Check that multiple operations are listed
         message = title_result.message
         assert "removed XML tags" in message
@@ -251,7 +260,7 @@ class TestContentCleanupRule:
         fields_to_test = [
             "title",
             "author",
-            "journal", 
+            "journal",
             "booktitle",
             "publisher",
             "address",
@@ -324,13 +333,19 @@ class TestContentCleanupRule:
 
         # Check title cleanup
         title_result = next(r for r in results if r.field == "title")
-        assert "Analysis of AI & Machine Learning...with issues" in title_result.suggested_fix
+        assert (
+            "Analysis of AI & Machine Learning...with issues"
+            in title_result.suggested_fix
+        )
 
-        # Check abstract cleanup  
+        # Check abstract cleanup
         abstract_result = next(r for r in results if r.field == "abstract")
-        assert 'This research examines deep learning methods "specifically"' in abstract_result.suggested_fix
+        assert (
+            'This research examines deep learning methods "specifically"'
+            in abstract_result.suggested_fix
+        )
 
         # Check author cleanup
         author_result = next(r for r in results if r.field == "author")
-        # Note: MarÃ­a -> María encoding fix should happen 
+        # Note: MarÃ­a -> María encoding fix should happen
         assert "José María Smith & Jane Doe" in author_result.suggested_fix
