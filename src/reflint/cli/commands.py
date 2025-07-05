@@ -23,6 +23,7 @@ from ..sources.pubmed import PubMedSource
 from ..sources.openalex import OpenAlexSource
 from ..sources.reconciliation import DataReconciler
 from ..utils.identifiers import IdentifierExtractor
+from ..utils.enhanced_lookup import EnhancedLookupStrategy
 from ..utils.cache import cleanup_cache, clear_cache, get_cache_statistics
 from ..utils.network import LinkChecker
 
@@ -223,6 +224,21 @@ def _display_validation_results(
 @click.option(
     "--dry-run", is_flag=True, help="Show what would be enhanced without making changes"
 )
+@click.option(
+    "--add-abstract", is_flag=True, help="Include abstracts when enhancing entries"
+)
+@click.option(
+    "--add-note", is_flag=True, help="Include notes when enhancing entries"
+)
+@click.option(
+    "--add-eprint", is_flag=True, help="Include eprint/arXiv IDs when enhancing entries"
+)
+@click.option(
+    "--add-pmid", is_flag=True, help="Include PubMed IDs when enhancing entries"
+)
+@click.option(
+    "--add-keywords", is_flag=True, help="Include keywords when enhancing entries"
+)
 @click.pass_context
 def enhance(
     ctx: click.Context,
@@ -234,6 +250,11 @@ def enhance(
     email: str | None,
     api_key: str | None,
     dry_run: bool,
+    add_abstract: bool,
+    add_note: bool,
+    add_eprint: bool,
+    add_pmid: bool,
+    add_keywords: bool,
 ) -> None:
     """Enhance BibTeX entries with external data sources."""
 
@@ -287,7 +308,7 @@ def enhance(
 
         # Run enhancement
         asyncio.run(
-            _enhance_entries_async(processor, source_registry, source_filter, dry_run)
+            _enhance_entries_async(processor, source_registry, source_filter, dry_run, add_abstract, add_note, add_eprint, add_pmid, add_keywords, email)
         )
 
         # Output processed file if requested and not dry run
@@ -307,10 +328,16 @@ async def _enhance_entries_async(
     source_registry: "DataSourceRegistry",
     source_filter: list[str] | None,
     dry_run: bool,
+    add_abstract: bool,
+    add_note: bool,
+    add_eprint: bool,
+    add_pmid: bool,
+    add_keywords: bool,
+    email: str | None = None,
 ) -> None:
-    """Enhance entries asynchronously."""
-    extractor = IdentifierExtractor()
-    reconciler = DataReconciler()
+    """Enhance entries asynchronously using enhanced lookup strategy."""
+    enhanced_lookup = EnhancedLookupStrategy(source_registry)
+    reconciler = DataReconciler(email=email)
 
     enhanced_count = 0
     total_entries = processor.get_entry_count()
@@ -319,36 +346,60 @@ async def _enhance_entries_async(
         for entry in processor.entries:
             click.echo(f"Processing entry: {entry.key}")
 
-            # Extract identifiers
-            identifiers = extractor.extract_from_entry(entry)
-            if not identifiers:
-                click.echo("  No identifiers found, skipping")
+            # Step 1: Resolve and prioritize identifiers
+            resolved = enhanced_lookup.resolve_identifiers(entry)
+            
+            if resolved.is_web_only:
+                click.echo("  Web/online-only entry, minimal enhancement")
+                continue
+            
+            if not any([resolved.primary_doi, resolved.primary_isbn, resolved.arxiv_id, resolved.pmid]):
+                click.echo("  No usable identifiers found, skipping")
                 continue
 
-            # Look up data from external sources
-            all_results = []
-            for identifier in identifiers:
-                if identifier.confidence < 0.7:  # Skip low-confidence identifiers
-                    continue
-
+            # Step 2: Try to resolve additional identifiers via Semantic Scholar
+            if not resolved.skip_semantic_scholar:
+                click.echo("  Resolving identifiers via Semantic Scholar...")
                 try:
-                    results = await source_registry.lookup_with_fallback(
-                        identifier.identifier_type,
-                        identifier.value,
-                        preferred_sources=source_filter,
-                    )
-                    all_results.extend(results)
+                    resolved = await enhanced_lookup.resolve_via_semantic_scholar(resolved)
                 except Exception as e:
-                    logger.warning(
-                        f"Lookup failed for {identifier.identifier_type}:{identifier.value}: {e}"
-                    )
+                    logger.warning(f"Failed to resolve identifiers via Semantic Scholar: {e}")
+
+            # Step 3: Determine optimal source strategy
+            enhancement_sources = enhanced_lookup.get_enhancement_sources(resolved)
+            if source_filter:
+                # Filter to user-specified sources
+                enhancement_sources = [s for s in enhancement_sources if s in source_filter]
+            
+            if not enhancement_sources:
+                click.echo("  No suitable sources for enhancement")
+                continue
+
+            click.echo(f"  Using sources: {', '.join(enhancement_sources)}")
+            
+            # Display resolved identifiers
+            id_info = []
+            if resolved.primary_doi:
+                id_info.append(f"DOI: {resolved.primary_doi}")
+            if resolved.primary_isbn:
+                id_info.append(f"ISBN: {resolved.primary_isbn}")
+            if resolved.arxiv_id:
+                id_info.append(f"arXiv: {resolved.arxiv_id}")
+            if resolved.pmid:
+                id_info.append(f"PMID: {resolved.pmid}")
+            
+            if id_info:
+                click.echo(f"  Identifiers: {', '.join(id_info)}")
+
+            # Step 4: Look up data from external sources using prioritized strategy
+            all_results = await enhanced_lookup.get_lookup_results(resolved, enhancement_sources)
 
             if not all_results:
                 click.echo("  No external data found")
                 continue
 
-            # Reconcile data
-            reconciled = reconciler.reconcile(all_results, entry)
+            # Step 5: Reconcile data with ISSN lookup
+            reconciled = await reconciler.reconcile_with_issn_lookup(all_results, entry, add_abstract, add_note, add_eprint, add_pmid, add_keywords)
 
             click.echo(f"  Found data from {len(reconciled.sources_used)} sources")
             click.echo(f"  Confidence: {reconciled.confidence_score:.2f}")
@@ -357,11 +408,22 @@ async def _enhance_entries_async(
             if reconciled.conflicts:
                 click.echo(f"  Conflicts resolved: {len(reconciled.conflicts)}")
 
+            # Step 6: Update identifiers in the enhanced entry
+            enhanced_entry = reconciled.entry
+            
+            # Record additional identifiers found via Semantic Scholar
+            if resolved.s2_doi and not enhanced_entry.has_field("doi"):
+                enhanced_entry.set_field("doi", resolved.s2_doi)
+            if resolved.s2_pmid and not enhanced_entry.has_field("pmid"):
+                enhanced_entry.set_field("pmid", resolved.s2_pmid)
+            if resolved.s2_isbn and not enhanced_entry.has_field("isbn"):
+                enhanced_entry.set_field("isbn", resolved.s2_isbn)
+
             if dry_run:
                 click.echo("  [DRY RUN] Would update entry")
             else:
                 # Update the entry
-                processor.entries[processor.entries.index(entry)] = reconciled.entry
+                processor.entries[processor.entries.index(entry)] = enhanced_entry
                 enhanced_count += 1
 
     finally:
@@ -369,6 +431,9 @@ async def _enhance_entries_async(
         for source in source_registry.get_all_sources():
             if hasattr(source, "close"):
                 await source.close()
+        
+        # Close reconciler (ISSN lookup service)
+        await reconciler.close()
 
     if not dry_run:
         click.echo(

@@ -8,6 +8,7 @@ from loguru import logger
 
 from .base import LookupResult
 from ..core.entry import BibTeXEntry
+from ..utils.issn_lookup import ISSNLookupService
 
 
 class ConflictStrategy(Enum):
@@ -48,11 +49,12 @@ class ReconciledEntry:
 class DataReconciler:
     """Reconcile data from multiple sources into a unified entry."""
 
-    def __init__(self, source_priorities: dict[str, int] | None = None) -> None:
+    def __init__(self, source_priorities: dict[str, int] | None = None, email: str | None = None) -> None:
         """Initialize reconciler.
 
         Args:
             source_priorities: Dictionary mapping source names to priority values (higher = more trusted)
+            email: Email for ISSN lookup service (optional)
         """
         self.source_priorities = source_priorities or {
             "crossref": 10,
@@ -61,6 +63,10 @@ class DataReconciler:
             "arxiv": 6,
             "openalex": 7,
         }
+        
+        # ISSN lookup service for journal name resolution
+        self.email = email
+        self._issn_service = None
 
         # Field-specific conflict resolution strategies
         self.field_strategies = {
@@ -77,6 +83,7 @@ class DataReconciler:
             "keywords": ConflictStrategy.MOST_COMPLETE,
             "url": ConflictStrategy.SOURCE_PRIORITY,
             "issn": ConflictStrategy.HIGHEST_CONFIDENCE,
+            "eissn": ConflictStrategy.HIGHEST_CONFIDENCE,
             "isbn": ConflictStrategy.HIGHEST_CONFIDENCE,
         }
 
@@ -87,6 +94,11 @@ class DataReconciler:
         self,
         lookup_results: list[LookupResult],
         original_entry: BibTeXEntry | None = None,
+        add_abstract: bool = False,
+        add_note: bool = False,
+        add_eprint: bool = False,
+        add_pmid: bool = False,
+        add_keywords: bool = False,
     ) -> ReconciledEntry:
         """Reconcile multiple lookup results into a single entry."""
         if not lookup_results:
@@ -117,15 +129,18 @@ class DataReconciler:
 
         logger.debug(f"Reconciling data from {len(valid_results)} sources")
 
-        # Start with the highest-confidence entry as base
-        base_result = max(valid_results, key=lambda r: r.metadata.confidence)
-        if base_result.entry is None:
-            raise ValueError("Base result entry is None")
-        reconciled_entry = BibTeXEntry(base_result.entry.to_dict())
+        # Start with original entry if available (to preserve key), otherwise use highest-confidence entry
+        if original_entry:
+            reconciled_entry = BibTeXEntry(original_entry.to_dict())
+        else:
+            base_result = max(valid_results, key=lambda r: r.metadata.confidence)
+            if base_result.entry is None:
+                raise ValueError("Base result entry is None")
+            reconciled_entry = BibTeXEntry(base_result.entry.to_dict())
 
         # Collect all field values from all sources
         field_values: dict[str, dict[str, tuple[Any, float]]] = (
-            self._collect_field_values(valid_results, original_entry)
+            self._collect_field_values(valid_results, original_entry, add_abstract, add_note, add_eprint, add_pmid, add_keywords)
         )
 
         # Resolve conflicts for each field
@@ -133,6 +148,10 @@ class DataReconciler:
         sources_used = set()
 
         for field_name, source_values in field_values.items():
+            # Skip ID field to preserve original entry key
+            if field_name == "ID":
+                continue
+                
             if len(source_values) <= 1:
                 # No conflict - use the single value
                 if source_values:
@@ -169,16 +188,133 @@ class DataReconciler:
             completeness_score=completeness_score,
             manual_review_required=manual_review_required,
         )
+    
+    async def reconcile_with_issn_lookup(
+        self,
+        lookup_results: list[LookupResult],
+        original_entry: BibTeXEntry | None = None,
+        add_abstract: bool = False,
+        add_note: bool = False,
+        add_eprint: bool = False,
+        add_pmid: bool = False,
+        add_keywords: bool = False,
+    ) -> ReconciledEntry:
+        """Reconcile with additional ISSN lookup for journal names."""
+        # First do regular reconciliation
+        reconciled = self.reconcile(
+            lookup_results, original_entry, add_abstract, add_note, add_eprint, add_pmid, add_keywords
+        )
+        
+        # Check if we need ISSN lookup
+        entry = reconciled.entry
+        needs_issn_lookup = (
+            entry.has_field("journal") and 
+            not entry.has_field("issn") and 
+            not entry.has_field("eissn")
+        )
+        
+        if needs_issn_lookup:
+            journal_name = entry.get_field("journal")
+            if journal_name:
+                logger.debug(f"Looking up ISSN for journal: {journal_name}")
+                issn_info = await self._lookup_journal_issn(journal_name)
+                
+                if issn_info:
+                    logger.debug(f"Found ISSN info: {issn_info}")
+                    
+                    # Add ISSN information to the entry
+                    if issn_info.get("eissn"):
+                        entry.set_field("issn", issn_info["eissn"])  # Prefer electronic ISSN
+                        logger.debug(f"Added electronic ISSN: {issn_info['eissn']}")
+                    elif issn_info.get("issn_l"):
+                        entry.set_field("issn", issn_info["issn_l"])
+                        logger.debug(f"Added ISSN-L: {issn_info['issn_l']}")
+                    elif issn_info.get("issn") and issn_info["issn"]:
+                        # Take the first/preferred ISSN from the list
+                        entry.set_field("issn", issn_info["issn"][0])
+                        logger.debug(f"Added ISSN: {issn_info['issn'][0]}")
+                    
+                    # Update sources used and recalculate completeness
+                    reconciled.sources_used.append("issn_lookup")
+                    reconciled.completeness_score = self._calculate_completeness(entry)
+        
+        return reconciled
+    
+    async def _lookup_journal_issn(self, journal_name: str) -> dict[str, Any] | None:
+        """Look up ISSN for a journal name."""
+        if not self._issn_service:
+            self._issn_service = ISSNLookupService(email=self.email)
+        
+        try:
+            return await self._issn_service.lookup_issn_by_journal_name(journal_name)
+        except Exception as e:
+            logger.debug(f"ISSN lookup failed for '{journal_name}': {e}")
+            return None
+    
+    async def close(self):
+        """Close ISSN lookup service if open."""
+        if self._issn_service:
+            await self._issn_service.close()
+            self._issn_service = None
 
     def _collect_field_values(
-        self, results: list[LookupResult], original_entry: BibTeXEntry | None
+        self, 
+        results: list[LookupResult], 
+        original_entry: BibTeXEntry | None, 
+        add_abstract: bool = False,
+        add_note: bool = False,
+        add_eprint: bool = False,
+        add_pmid: bool = False,
+        add_keywords: bool = False
     ) -> dict[str, dict[str, tuple[Any, float]]]:
         """Collect field values from all sources."""
         field_values: dict[str, dict[str, tuple[Any, float]]] = {}
+        
+        def should_skip_field(field_name: str, entry_type: str = "") -> bool:
+            """Check if a field should be skipped based on user preferences and entry type."""
+            # Skip fields based on user preferences
+            if field_name == "abstract" and not add_abstract:
+                return True
+            if field_name == "note" and not add_note:
+                return True
+            if field_name == "eprint" and not add_eprint:
+                return True
+            if field_name == "pmid" and not add_pmid:
+                return True
+            if field_name == "keywords" and not add_keywords:
+                return True
+            
+            # Always skip ID field to preserve original entry key
+            if field_name == "ID":
+                return True
+            
+            # Entry type-specific field validation
+            # Never add journal field for proceedings or book chapters
+            if field_name == "journal" and entry_type.lower() in ["inproceedings", "inbook"]:
+                logger.debug(f"Skipping journal field for {entry_type} entry")
+                return True
+            
+            # Never add booktitle field for journal articles
+            if field_name == "booktitle" and entry_type.lower() == "article":
+                logger.debug(f"Skipping booktitle field for {entry_type} entry")
+                return True
+            
+            return False
+
+        # Determine target entry type (prefer original entry type)
+        target_entry_type = ""
+        if original_entry:
+            target_entry_type = original_entry.entry_type
+        elif results and results[0].entry:
+            target_entry_type = results[0].entry.entry_type
 
         # Add original entry values if provided
         if original_entry:
             for field_name in original_entry.get_all_fields():
+                # Skip fields based on user preferences and entry type
+                if should_skip_field(field_name, target_entry_type):
+                    continue
+                    
                 value = original_entry.get_field(field_name)
                 if value:
                     if field_name not in field_values:
@@ -197,6 +333,10 @@ class DataReconciler:
             base_confidence = result.metadata.confidence
 
             for field_name in result.entry.get_all_fields():
+                # Skip fields based on user preferences and entry type
+                if should_skip_field(field_name, target_entry_type):
+                    continue
+                    
                 value = result.entry.get_field(field_name)
                 if value:
                     # Get source-specific field confidence
@@ -216,10 +356,46 @@ class DataReconciler:
 
         return field_values
 
+    def _resolve_issn_conflict(
+        self, field_name: str, source_values: dict[str, tuple[Any, float]]
+    ) -> FieldConflict:
+        """Special handling for ISSN conflicts - prefer electronic over print."""
+        values = {source: value for source, (value, conf) in source_values.items()}
+        confidences = {source: conf for source, (value, conf) in source_values.items()}
+        
+        conflict = FieldConflict(
+            field_name=field_name,
+            values=values,
+            confidences=confidences,
+            strategy_used=ConflictStrategy.HIGHEST_CONFIDENCE,
+        )
+        
+        # Check if we have both ISSN and EISSN, prefer EISSN
+        eissn_sources = [s for s in source_values.keys() if "eissn" in s.lower()]
+        issn_sources = [s for s in source_values.keys() if s not in eissn_sources]
+        
+        if eissn_sources:
+            # Prefer electronic ISSN
+            best_source = max(eissn_sources, key=lambda x: confidences[x])
+            conflict.selected_value = values[best_source]
+            conflict.selected_source = best_source
+            logger.debug(f"Selected electronic ISSN {conflict.selected_value} from {best_source}")
+        else:
+            # Fall back to highest confidence among print ISSNs
+            best_source = max(confidences.keys(), key=lambda x: confidences[x])
+            conflict.selected_value = values[best_source]
+            conflict.selected_source = best_source
+        
+        return conflict
+    
     def _resolve_field_conflict(
         self, field_name: str, source_values: dict[str, tuple[Any, float]]
     ) -> FieldConflict:
         """Resolve conflict for a specific field."""
+        # Special handling for ISSN fields
+        if field_name in ["issn", "eissn"]:
+            return self._resolve_issn_conflict(field_name, source_values)
+        
         strategy = self.field_strategies.get(
             field_name, ConflictStrategy.HIGHEST_CONFIDENCE
         )
@@ -290,7 +466,16 @@ class DataReconciler:
             return 0.0
 
         # Base confidence from best source
-        base_confidence = max(r.metadata.confidence for r in results)
+        # Handle both SourceConfidence enum and float values
+        confidences = []
+        for r in results:
+            if hasattr(r.metadata.confidence, 'value'):
+                # SourceConfidence enum
+                confidences.append(r.metadata.confidence.value)
+            else:
+                # Already a float
+                confidences.append(r.metadata.confidence)
+        base_confidence = max(confidences)
 
         # Penalty for conflicts
         conflict_penalty = len(conflicts) * 0.05  # 5% penalty per conflict
