@@ -1,5 +1,17 @@
 # reflint
 
+<p>
+  <a href="https://github.com/dvolgyes/reflint/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/dvolgyes/reflint/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://coveralls.io/github/dvolgyes/reflint?branch=master"><img alt="Coverage Status" src="https://coveralls.io/repos/github/dvolgyes/reflint/badge.svg?branch=master" /></a>
+  <a href="https://gitlab.com/dvolgyes/reflint/-/pipelines"><img alt="GitLab pipeline" src="https://gitlab.com/dvolgyes/reflint/badges/master/pipeline.svg" /></a>
+  <a href="https://gitlab.com/dvolgyes/reflint/-/commits/master"><img alt="GitLab coverage" src="https://gitlab.com/dvolgyes/reflint/badges/master/coverage.svg" /></a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://pypi.org/project/reflint/"><img alt="Version: 0.1.0" src="https://img.shields.io/badge/version-0.1.0-orange.svg" /></a>
+  <a href="https://pypi.org/project/reflint/"><img alt="Status: Alpha" src="https://img.shields.io/badge/status-alpha-yellow.svg" /></a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.python.org/"><img alt="Python: >=3.12" src="https://img.shields.io/badge/python-%3E=3.12-blue.svg" /></a>
+</p>
+
 `reflint` is a BibTeX reference checker and fixer focused on three jobs:
 
 1. validate entries against a rule registry
@@ -97,7 +109,7 @@ The repository includes unit tests for core logic, rules, sources, and utilities
 Run the test suite with:
 
 ```bash
-uv run pytest
+uv run pytest -n 8 --cov
 ```
 
 ## Notes

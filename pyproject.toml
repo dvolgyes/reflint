@@ -24,6 +24,7 @@ reflint = "reflint.main:main"
 
 [dependency-groups]
 dev = [
+    "coveralls>=4.1.0",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
