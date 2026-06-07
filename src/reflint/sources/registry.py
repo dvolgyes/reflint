@@ -1,5 +1,7 @@
 """Data source registry and management."""
 
+from typing import Any
+
 from loguru import logger
 
 from .base import BaseDataSource, LookupResult, DataSourceError
@@ -83,9 +85,9 @@ class DataSourceRegistry:
 
         return results
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, Any]:
         """Get statistics about registered sources."""
-        stats = {
+        return {
             "total_sources": len(self._sources),
             "sources_by_identifier": {
                 id_type: len(sources)
@@ -100,7 +102,6 @@ class DataSourceRegistry:
                 for source in self._sources.values()
             ],
         }
-        return stats
 
 
 # Global registry instance

@@ -8,10 +8,11 @@ import asyncio
 import re
 import time
 from dataclasses import dataclass
+from inspect import isawaitable
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 
@@ -130,12 +131,12 @@ class LinkQualityManager:
 
                     except httpx.RequestError as e:
                         if attempt == self.max_retries:
-                            status.error_message = f"Request error: {str(e)}"
+                            status.error_message = f"Request error: {e!s}"
                         else:
                             await asyncio.sleep(1)
 
         except Exception as e:
-            status.error_message = f"Unexpected error: {str(e)}"
+            status.error_message = f"Unexpected error: {e!s}"
             logger.warning(f"Error checking URL {url}: {e}")
 
         # Cache the result
@@ -166,7 +167,7 @@ class LinkQualityManager:
 
         status_map = {}
         for result in results:
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.error(f"Error in concurrent URL check: {result}")
                 continue
             url, status = result
@@ -213,12 +214,14 @@ class LinkQualityManager:
 
                 if response.status_code == 200:
                     data = response.json()
+                    if isawaitable(data):
+                        data = await data
 
                     if len(data) > 1:  # First row is headers
                         # Get the most recent snapshot
                         snapshot = data[1]
-                        timestamp = snapshot[1]
-                        original = snapshot[2]
+                        timestamp = snapshot[0]
+                        original = snapshot[1]
 
                         # Format archive URL
                         result.archived_url = (
@@ -495,8 +498,7 @@ class URLShortenerDetector:
         domain = parsed.netloc.lower()
 
         # Remove www. prefix
-        if domain.startswith("www."):
-            domain = domain[4:]
+        domain = domain.removeprefix("www.")
 
         return domain in cls.SHORTENER_DOMAINS
 
@@ -560,5 +562,7 @@ async def check_entry_link_quality(entry: dict[str, Any]) -> dict[str, Any]:
 
     # Generate report
     report = manager.get_dead_link_report(urls, status_map)
+    if isawaitable(report):
+        report = await report
 
     return {"enhanced_entry": enhanced_entry, "link_report": report}

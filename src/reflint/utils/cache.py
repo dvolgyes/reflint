@@ -194,7 +194,7 @@ class ResponseCache:
                 logger.info(f"Cleaned up {deleted_count} expired cache entries")
             return deleted_count
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, Any]:
         """Get cache statistics."""
         with sqlite3.connect(self.cache_file) as conn:
             conn.row_factory = sqlite3.Row
@@ -338,7 +338,7 @@ def clear_cache(source: str | None = None) -> int:
     return cache.clear(source)
 
 
-def get_cache_statistics() -> dict:
+def get_cache_statistics() -> dict[str, Any]:
     """Get global cache statistics."""
     cache = get_cache()
     return cache.get_statistics()

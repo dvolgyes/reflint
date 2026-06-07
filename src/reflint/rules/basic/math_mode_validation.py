@@ -6,7 +6,7 @@ improper nesting, and potential issues with $ signs in mathematical expressions.
 
 import re
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar, Literal, cast
 
 from ..base import BaseRule
 from ...core.entry import BibTeXEntry
@@ -28,7 +28,7 @@ class MathModeValidator:
     """Validates LaTeX math mode syntax."""
 
     # Math mode delimiters and their properties
-    MATH_DELIMITERS = {
+    MATH_DELIMITERS: ClassVar[dict[str, dict[str, Any]]] = {
         "$": {"type": "inline", "paired": True, "display": False},
         "$$": {"type": "display", "paired": True, "display": True},
         "\\(": {"type": "inline", "paired": True, "display": False, "close": "\\)"},
@@ -117,7 +117,7 @@ class MathModeValidator:
     # Pattern for escaped delimiters that should be ignored
     ESCAPED_PATTERN = re.compile(r"\\[\$\(\)\[\]]")
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the math mode validator."""
         pass
 
@@ -147,7 +147,7 @@ class MathModeValidator:
         return issues
 
     def _check_unmatched_delimiters(
-        self, text: str, delimiters: list
+        self, text: str, delimiters: list[re.Match[str]]
     ) -> list[MathModeIssue]:
         """Check for unmatched math delimiters.
 
@@ -159,7 +159,7 @@ class MathModeValidator:
             List of issues found
         """
         issues = []
-        stack = []
+        stack: list[dict[str, str | int]] = []
 
         for match in delimiters:
             delimiter = match.group(1)
@@ -227,21 +227,23 @@ class MathModeValidator:
 
         # Check for unclosed delimiters
         for unclosed in stack:
-            context = self._get_context(text, unclosed["position"], 20)
+            position = cast(int, unclosed["position"])
+            delimiter = cast(str, unclosed["delimiter"])
+            context = self._get_context(text, position, 20)
             issues.append(
                 MathModeIssue(
                     issue_type="unmatched_opening",
-                    position=unclosed["position"],
+                    position=position,
                     context=context,
-                    suggestion=f"Unclosed math delimiter '{unclosed['delimiter']}'. Add corresponding closing delimiter.",
-                    delimiter=unclosed["delimiter"],
+                    suggestion=f"Unclosed math delimiter '{delimiter}'. Add corresponding closing delimiter.",
+                    delimiter=delimiter,
                 )
             )
 
         return issues
 
     def _check_improper_nesting(
-        self, text: str, delimiters: list
+        self, text: str, delimiters: list[re.Match[str]]
     ) -> list[MathModeIssue]:
         """Check for improper nesting of math delimiters.
 
@@ -253,7 +255,7 @@ class MathModeValidator:
             List of nesting issues
         """
         issues = []
-        stack = []
+        stack: list[dict[str, str | int]] = []
 
         for match in delimiters:
             delimiter = match.group(1)
@@ -399,7 +401,6 @@ class MathModeValidator:
 
                 # Check if we're likely in math mode (simplified check)
                 before_text = text[:position]
-                after_text = text[position:]
 
                 # Count math delimiters before this position
                 math_open = len(re.findall(r"(?<!\\)\$", before_text)) % 2
@@ -452,13 +453,13 @@ class MathModeValidationRule(BaseRule):
     """Rule M001: Validates LaTeX math mode syntax."""
 
     rule_id: ClassVar[str] = "M001"
-    severity: ClassVar[str] = "warning"
+    severity: ClassVar[Literal["error", "warning", "info"]] = "warning"
     category: ClassVar[str] = "basic"
     description: ClassVar[str] = (
         "Validates LaTeX math mode syntax and checks for unmatched delimiters"
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the math mode validation rule."""
         self.validator = MathModeValidator()
 

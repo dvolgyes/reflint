@@ -8,9 +8,9 @@ from . import basic  # noqa: F401
 from . import content  # noqa: F401
 
 __all__ = [
+    "BaseRule",
+    "EntryTypeRule",
+    "FieldValidationRule",
     "get_registry",
     "register_rule",
-    "BaseRule",
-    "FieldValidationRule",
-    "EntryTypeRule",
 ]

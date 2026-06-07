@@ -1,6 +1,7 @@
 """Advanced brace management for BibTeX entries."""
 
 import re
+from typing import ClassVar, Literal
 
 from ..base import BaseRule
 from ...core.entry import BibTeXEntry
@@ -10,10 +11,12 @@ from ...core.validation import RuleViolation
 class AdvancedBraceManagementRule(BaseRule):
     """Rule for advanced brace management with smart protected words."""
 
-    rule_id = "B001"
-    severity = "warning"
-    category = "formatting"
-    description = "Manage braces for protected words and consolidate unnecessary braces"
+    rule_id: ClassVar[str] = "B001"
+    severity: ClassVar[Literal["error", "warning", "info"]] = "warning"
+    category: ClassVar[str] = "formatting"
+    description: ClassVar[str] = (
+        "Manage braces for protected words and consolidate unnecessary braces"
+    )
 
     # Domain-specific protected words that should be braced
     PROTECTED_WORDS = {
@@ -139,7 +142,7 @@ class AdvancedBraceManagementRule(BaseRule):
         "BIC",
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Compile regex patterns for efficiency
         self._consolidation_pattern = re.compile(
             r"\{([A-Z])\}\{([A-Z])\}\{([A-Z])\}(?:\{([A-Z])\})?(?:\{([A-Z])\})?"
@@ -234,10 +237,7 @@ class AdvancedBraceManagementRule(BaseRule):
             return True
 
         # Check for nested braces
-        if "{" in content and "}" in content:
-            return True
-
-        return False
+        return "{" in content and "}" in content
 
     def can_fix(self) -> bool:
         """This rule can automatically fix brace issues."""
@@ -266,11 +266,9 @@ class AdvancedBraceManagementRule(BaseRule):
         text = self._protected_word_pattern.sub(self._protect_word, text)
 
         # Step 3: Remove unnecessary outer braces (conservative approach)
-        text = self._remove_unnecessary_outer_braces(text)
+        return self._remove_unnecessary_outer_braces(text)
 
-        return text
-
-    def _consolidate_braces(self, match) -> str:
+    def _consolidate_braces(self, match: re.Match[str]) -> str:
         """Consolidate consecutive single-letter braces."""
         groups = [g for g in match.groups() if g is not None]
         consolidated = "".join(groups)
@@ -278,7 +276,7 @@ class AdvancedBraceManagementRule(BaseRule):
             return f"{{{consolidated}}}"
         return match.group(0)  # No change if not a known protected word
 
-    def _protect_word(self, match) -> str:
+    def _protect_word(self, match: re.Match[str]) -> str:
         """Protect a word with braces if not already protected."""
         word = match.group(1)
         start, end = match.span()
@@ -303,10 +301,10 @@ class AdvancedBraceManagementRule(BaseRule):
         if outer_match:
             inner_content = outer_match.group(1)
             # Only remove if we're confident it's safe
-            if not self._has_unprotected_content(inner_content):
-                # Additional safety check: ensure balanced braces inside
-                if self._has_balanced_braces(inner_content):
-                    return inner_content
+            if not self._has_unprotected_content(
+                inner_content
+            ) and self._has_balanced_braces(inner_content):
+                return inner_content
 
         return text
 

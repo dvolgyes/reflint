@@ -29,7 +29,7 @@ class SimilarityScore:
 class FuzzyMatcher:
     """Advanced fuzzy matching for bibliographic entries."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Default weights for similarity components
         self.default_weights = {
             "title": 0.40,
@@ -229,9 +229,7 @@ class FuzzyMatcher:
         normalized = " ".join(normalized.split())
 
         # Convert to lowercase
-        normalized = normalized.lower()
-
-        return normalized
+        return normalized.lower()
 
     def _authors_partially_match(self, name1: str, name2: str) -> bool:
         """Check if two author names partially match."""
@@ -243,21 +241,26 @@ class FuzzyMatcher:
         parts2 = name2.split()
 
         # Check for last name match (assumes last word is last name)
-        if parts1 and parts2 and parts1[-1] == parts2[-1]:
+        if (
+            parts1
+            and parts2
+            and parts1[-1] == parts2[-1]
+            and len(parts1) > 1
+            and len(parts2) > 1
+        ):
             # Check for first initial match
-            if len(parts1) > 1 and len(parts2) > 1:
-                first1 = parts1[0]
-                first2 = parts2[0]
+            first1 = parts1[0]
+            first2 = parts2[0]
 
-                # Check if one is an initial of the other
-                if (len(first1) == 1 and first2.startswith(first1)) or (
-                    len(first2) == 1 and first1.startswith(first2)
-                ):
-                    return True
+            # Check if one is an initial of the other
+            if (len(first1) == 1 and first2.startswith(first1)) or (
+                len(first2) == 1 and first1.startswith(first2)
+            ):
+                return True
 
-                # Check if first names match exactly
-                if first1 == first2:
-                    return True
+            # Check if first names match exactly
+            if first1 == first2:
+                return True
 
         return False
 
@@ -277,12 +280,11 @@ class FuzzyMatcher:
 
             if y1 == y2:
                 return 1.0
-            elif abs(y1 - y2) == 1:
+            if abs(y1 - y2) == 1:
                 return 0.8  # Off by one year (common in publication lag)
-            elif abs(y1 - y2) <= 2:
+            if abs(y1 - y2) <= 2:
                 return 0.6  # Close but not exact
-            else:
-                return 0.0  # Too far apart
+            return 0.0  # Too far apart
 
         except ValueError:
             # Non-numeric years, fall back to string comparison
@@ -420,12 +422,11 @@ class FuzzyMatcher:
         """Get human-readable confidence level."""
         if self.is_high_confidence_match(similarity):
             return "high"
-        elif self.is_probable_match(similarity):
+        if self.is_probable_match(similarity):
             return "medium"
-        elif self.is_possible_match(similarity):
+        if self.is_possible_match(similarity):
             return "low"
-        else:
-            return "very_low"
+        return "very_low"
 
 
 # Global matcher instance

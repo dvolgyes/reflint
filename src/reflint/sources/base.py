@@ -43,7 +43,7 @@ class LookupResult:
 
     entry: BibTeXEntry | None
     metadata: SourceMetadata
-    raw_data: dict | None = None
+    raw_data: dict[str, Any] | None = None
 
 
 class BaseDataSource(ABC):
@@ -83,12 +83,11 @@ class BaseDataSource(ABC):
         """Look up entry by generic identifier."""
         if identifier_type == "doi":
             return await self.lookup_by_doi(value)
-        elif identifier_type == "arxiv":
+        if identifier_type == "arxiv":
             return await self.lookup_by_arxiv(value)
-        elif identifier_type == "pmid":
+        if identifier_type == "pmid":
             return await self.lookup_by_pmid(value)
-        else:
-            raise DataSourceError(f"Unsupported identifier type: {identifier_type}")
+        raise DataSourceError(f"Unsupported identifier type: {identifier_type}")
 
     async def lookup_by_arxiv(self, arxiv_id: str) -> LookupResult:
         """Look up entry by arXiv ID. Default implementation raises error."""

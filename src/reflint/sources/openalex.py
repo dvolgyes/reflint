@@ -6,10 +6,10 @@ about academic publications from a comprehensive open database.
 
 import re
 import time
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 from ..utils.cached_http import cached_httpx_get
@@ -68,18 +68,18 @@ class OpenAlexSource(BaseDataSource):
 
             # Search by DOI
             url = f"{self.base_url}/works"
-            params = {"filter": f"doi:{clean_doi}", "per-page": 1}
+            params: dict[str, Any] = {"filter": f"doi:{clean_doi}", "per-page": 1}
 
             response = await cached_httpx_get(
                 url=url,
                 params=params,
                 headers=headers,
                 timeout=30.0,
-                rate_limit_func=self._rate_limit
+                rate_limit_func=self._rate_limit,
             )
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             works = data.get("results", [])
 
             if not works:
@@ -96,15 +96,15 @@ class OpenAlexSource(BaseDataSource):
             entry = self._parse_work(works[0])
 
             return LookupResult(
-                    entry=entry,
-                    metadata=SourceMetadata(
-                        source_name=self.name,
-                        lookup_time=time.time() - start_time,
-                        confidence=self.confidence,
-                        api_response_size=len(response.text),
-                    ),
-                    raw_data={"response_json": data},
-                )
+                entry=entry,
+                metadata=SourceMetadata(
+                    source_name=self.name,
+                    lookup_time=time.time() - start_time,
+                    confidence=self.confidence,
+                    api_response_size=len(response.text),
+                ),
+                raw_data={"response_json": data},
+            )
 
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching DOI {clean_doi}: {e}")
@@ -163,7 +163,7 @@ class OpenAlexSource(BaseDataSource):
                 headers["User-Agent"] += f" (mailto:{self.email})"
 
             url = f"{self.base_url}/works"
-            params = {
+            params: dict[str, Any] = {
                 "filter": ",".join(filters),
                 "per-page": 5,
                 "sort": "relevance_score:desc",
@@ -174,11 +174,11 @@ class OpenAlexSource(BaseDataSource):
                 params=params,
                 headers=headers,
                 timeout=30.0,
-                rate_limit_func=self._rate_limit
+                rate_limit_func=self._rate_limit,
             )
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             works = data.get("results", [])
 
             if not works:
@@ -199,17 +199,17 @@ class OpenAlexSource(BaseDataSource):
                 entry = self._parse_work(work)
                 if entry:
                     results.append(
-                            LookupResult(
-                                entry=entry,
-                                metadata=SourceMetadata(
-                                    source_name=self.name,
-                                    lookup_time=time.time() - start_time,
-                                    confidence=self.confidence,
-                                    api_response_size=len(response.text),
-                                ),
-                                raw_data={"work_data": work},
-                            )
+                        LookupResult(
+                            entry=entry,
+                            metadata=SourceMetadata(
+                                source_name=self.name,
+                                lookup_time=time.time() - start_time,
+                                confidence=self.confidence,
+                                api_response_size=len(response.text),
+                            ),
+                            raw_data={"work_data": work},
                         )
+                    )
 
             return results
 
@@ -270,18 +270,21 @@ class OpenAlexSource(BaseDataSource):
 
             # Search by PMID
             url = f"{self.base_url}/works"
-            params = {"filter": f"ids.pmid:{clean_pmid}", "per-page": 1}
+            params: dict[str, Any] = {
+                "filter": f"ids.pmid:{clean_pmid}",
+                "per-page": 1,
+            }
 
             response = await cached_httpx_get(
                 url=url,
                 params=params,
                 headers=headers,
                 timeout=30.0,
-                rate_limit_func=self._rate_limit
+                rate_limit_func=self._rate_limit,
             )
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             works = data.get("results", [])
 
             if not works:
@@ -298,15 +301,15 @@ class OpenAlexSource(BaseDataSource):
             entry = self._parse_work(works[0])
 
             return LookupResult(
-                    entry=entry,
-                    metadata=SourceMetadata(
-                        source_name=self.name,
-                        lookup_time=time.time() - start_time,
-                        confidence=self.confidence,
-                        api_response_size=len(response.text),
-                    ),
-                    raw_data={"response_json": data},
-                )
+                entry=entry,
+                metadata=SourceMetadata(
+                    source_name=self.name,
+                    lookup_time=time.time() - start_time,
+                    confidence=self.confidence,
+                    api_response_size=len(response.text),
+                ),
+                raw_data={"response_json": data},
+            )
 
         except httpx.HTTPError as e:
             logger.error(f"HTTP error fetching PMID {clean_pmid}: {e}")
@@ -331,22 +334,20 @@ class OpenAlexSource(BaseDataSource):
                 ),
             )
 
-    async def lookup_journal_issn(self, journal_name: str) -> dict[str, str] | None:
+    async def lookup_journal_issn(self, journal_name: str) -> dict[str, Any] | None:
         """Look up ISSN information for a journal by name.
-        
+
         Args:
             journal_name: Name of the journal to search for
-            
+
         Returns:
             Dictionary with ISSN information or None if not found
             Format: {"issn_l": "xxxx-xxxx", "issn": ["xxxx-xxxx", "yyyy-yyyy"], "display_name": "Journal Name"}
         """
-        start_time = time.time()
-        
         if not journal_name or not journal_name.strip():
             logger.debug("Empty journal name provided")
             return None
-            
+
         journal_name = journal_name.strip()
         logger.debug(f"Looking up ISSN for journal: {journal_name}")
 
@@ -357,60 +358,64 @@ class OpenAlexSource(BaseDataSource):
 
             # Use autocomplete endpoint first (faster and more accurate for name matching)
             autocomplete_url = f"{self.base_url}/autocomplete/sources"
-            params = {"q": journal_name}
+            params: dict[str, Any] = {"q": journal_name}
 
             response = await cached_httpx_get(
                 url=autocomplete_url,
                 params=params,
                 headers=headers,
                 timeout=30.0,
-                rate_limit_func=self._rate_limit
+                rate_limit_func=self._rate_limit,
             )
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             results = data.get("results", [])
-            
+
             if results:
                 # Take the first (most relevant) result
                 source = results[0]
-                
+
                 # Extract ISSN information
                 issn_info = {
                     "display_name": source.get("display_name", ""),
-                    "issn_l": source.get("external_id"),  # This is ISSN-L in autocomplete
+                    "issn_l": source.get(
+                        "external_id"
+                    ),  # This is ISSN-L in autocomplete
                     "issn": [],
-                    "openalex_id": source.get("id", "")
+                    "openalex_id": source.get("id", ""),
                 }
-                
+
                 # If we have an OpenAlex ID, get full source details for complete ISSN array
                 if issn_info["openalex_id"]:
-                    source_id = issn_info["openalex_id"].split("/")[-1]  # Extract ID from URL
+                    source_id = issn_info["openalex_id"].split("/")[
+                        -1
+                    ]  # Extract ID from URL
                     full_source = await self._get_full_source_details(source_id)
                     if full_source:
                         issn_info["issn"] = full_source.get("issn", [])
                         if not issn_info["issn_l"]:
                             issn_info["issn_l"] = full_source.get("issn_l")
-                
+
                 logger.debug(f"Found ISSN info for '{journal_name}': {issn_info}")
                 return issn_info
-            
+
             # Fallback to search endpoint if autocomplete doesn't find anything
             search_url = f"{self.base_url}/sources"
             params = {"search": journal_name, "per-page": 5}
-            
+
             response = await cached_httpx_get(
                 url=search_url,
                 params=params,
                 headers=headers,
                 timeout=30.0,
-                rate_limit_func=self._rate_limit
+                rate_limit_func=self._rate_limit,
             )
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             results = data.get("results", [])
-            
+
             if results:
                 # Take the first (most relevant) result
                 source = results[0]
@@ -418,12 +423,14 @@ class OpenAlexSource(BaseDataSource):
                     "display_name": source.get("display_name", ""),
                     "issn_l": source.get("issn_l"),
                     "issn": source.get("issn", []),
-                    "openalex_id": source.get("id", "")
+                    "openalex_id": source.get("id", ""),
                 }
-                
-                logger.debug(f"Found ISSN info via search for '{journal_name}': {issn_info}")
+
+                logger.debug(
+                    f"Found ISSN info via search for '{journal_name}': {issn_info}"
+                )
                 return issn_info
-            
+
             logger.debug(f"No ISSN found for journal: {journal_name}")
             return None
 
@@ -434,7 +441,7 @@ class OpenAlexSource(BaseDataSource):
             logger.error(f"Error looking up journal '{journal_name}': {e}")
             return None
 
-    async def _get_full_source_details(self, source_id: str) -> dict | None:
+    async def _get_full_source_details(self, source_id: str) -> dict[str, Any] | None:
         """Get full source details by OpenAlex ID."""
         try:
             headers = {"User-Agent": "ReflInt/1.0 (OpenAlex integration)"}
@@ -442,17 +449,14 @@ class OpenAlexSource(BaseDataSource):
                 headers["User-Agent"] += f" (mailto:{self.email})"
 
             url = f"{self.base_url}/sources/{source_id}"
-            
+
             response = await cached_httpx_get(
-                url=url,
-                headers=headers,
-                timeout=30.0,
-                rate_limit_func=self._rate_limit
+                url=url, headers=headers, timeout=30.0, rate_limit_func=self._rate_limit
             )
             response.raise_for_status()
-            
-            return response.json()
-            
+
+            return cast("dict[str, Any]", response.json())
+
         except Exception as e:
             logger.debug(f"Error getting full source details for {source_id}: {e}")
             return None
@@ -498,7 +502,7 @@ class OpenAlexSource(BaseDataSource):
 
         return None
 
-    def _parse_work(self, work: dict) -> BibTeXEntry | None:
+    def _parse_work(self, work: dict[str, Any]) -> BibTeXEntry | None:
         """Parse OpenAlex work data to BibTeX entry."""
         try:
             # Extract basic metadata
@@ -587,13 +591,13 @@ class OpenAlexSource(BaseDataSource):
             logger.error(f"Error parsing OpenAlex work: {e}")
             return None
 
-    def _safe_get(self, obj, key: str, default=None):
+    def _safe_get(self, obj: Any, key: str, default: Any = None) -> Any:
         """Safely get a value from an object that might be a dict or string."""
         if isinstance(obj, dict):
             return obj.get(key, default)
         return default
 
-    def _extract_authors(self, work: dict) -> list[str]:
+    def _extract_authors(self, work: dict[str, Any]) -> list[str]:
         """Extract author list from work."""
         authors = []
         authorships = work.get("authorships", [])
@@ -607,7 +611,7 @@ class OpenAlexSource(BaseDataSource):
 
         return authors
 
-    def _extract_publication_info(self, work: dict) -> dict[str, str]:
+    def _extract_publication_info(self, work: dict[str, Any]) -> dict[str, str]:
         """Extract publication venue information."""
         pub_info = {}
 
@@ -649,7 +653,7 @@ class OpenAlexSource(BaseDataSource):
 
         return pub_info
 
-    def _extract_publication_date(self, work: dict) -> dict[str, int]:
+    def _extract_publication_date(self, work: dict[str, Any]) -> dict[str, int]:
         """Extract publication date."""
         pub_date = {}
 
@@ -673,7 +677,7 @@ class OpenAlexSource(BaseDataSource):
 
         return pub_date
 
-    def _extract_abstract(self, work: dict) -> str:
+    def _extract_abstract(self, work: dict[str, Any]) -> str:
         """Extract abstract from inverted abstract format."""
         abstract_inverted_index = work.get("abstract_inverted_index")
         if not abstract_inverted_index:
@@ -696,7 +700,7 @@ class OpenAlexSource(BaseDataSource):
             logger.warning(f"Error reconstructing abstract: {e}")
             return ""
 
-    def _extract_identifiers(self, work: dict) -> dict[str, str]:
+    def _extract_identifiers(self, work: dict[str, Any]) -> dict[str, str]:
         """Extract DOI, PMID, and other identifiers."""
         identifiers = {}
 
@@ -718,7 +722,7 @@ class OpenAlexSource(BaseDataSource):
 
         return identifiers
 
-    def _extract_topics(self, work: dict) -> list[str]:
+    def _extract_topics(self, work: dict[str, Any]) -> list[str]:
         """Extract research topics/keywords."""
         topics = []
 
@@ -738,7 +742,7 @@ class OpenAlexSource(BaseDataSource):
 
         return topics
 
-    def _determine_entry_type(self, work: dict) -> str:
+    def _determine_entry_type(self, work: dict[str, Any]) -> str:
         """Determine appropriate BibTeX entry type."""
         work_type = work.get("type", "").lower()
 
@@ -765,9 +769,7 @@ class OpenAlexSource(BaseDataSource):
             return ""
 
         # Remove extra whitespace
-        title = re.sub(r"\s+", " ", title.strip())
-
-        return title
+        return re.sub(r"\s+", " ", title.strip())
 
     def _format_authors(self, authors: list[str]) -> str:
         """Format author list for BibTeX."""

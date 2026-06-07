@@ -13,10 +13,10 @@ async def test_journal_issn_lookup(journal_name: str):
     """Test ISSN lookup for a specific journal name."""
     print(f"🔍 Looking up ISSN for journal: '{journal_name}'")
     print("=" * 60)
-    
+
     try:
         result = await lookup_journal_issn(journal_name)
-        
+
         if result:
             print("✅ ISSN Information Found:")
             print(f"   Journal Name: {result.get('display_name', 'N/A')}")
@@ -27,7 +27,7 @@ async def test_journal_issn_lookup(journal_name: str):
             print(f"   Source: {result.get('source', 'N/A')}")
         else:
             print("❌ No ISSN information found")
-            
+
     except Exception as e:
         print(f"⚠️  Error: {e}")
 
@@ -36,7 +36,7 @@ async def test_multiple_journals():
     """Test ISSN lookup for multiple well-known journals."""
     test_journals = [
         "Nature",
-        "Science", 
+        "Science",
         "Cell",
         "The Lancet",
         "Physical Review Letters",
@@ -45,31 +45,33 @@ async def test_multiple_journals():
         "Nature Biotechnology",
         "Invalid Journal Name That Should Not Exist",
         "IEEE Computer",
-        "Nature Communications"
+        "Nature Communications",
     ]
-    
+
     print("🧪 Testing ISSN lookup for multiple journals")
     print("=" * 60)
-    
+
     success_count = 0
-    
+
     for journal in test_journals:
         print(f"\n🔍 Testing: {journal}")
         print("-" * 40)
-        
+
         try:
             result = await lookup_journal_issn(journal)
-            
+
             if result:
-                print(f"✅ Found - ISSN-L: {result.get('issn_l', 'N/A')}, "
-                      f"EISSN: {result.get('eissn', 'N/A')}")
+                print(
+                    f"✅ Found - ISSN-L: {result.get('issn_l', 'N/A')}, "
+                    f"EISSN: {result.get('eissn', 'N/A')}"
+                )
                 success_count += 1
             else:
                 print("❌ Not found")
-                
+
         except Exception as e:
             print(f"⚠️  Error: {e}")
-    
+
     print(f"\n📊 Results: {success_count}/{len(test_journals)} journals found")
 
 
@@ -88,9 +90,13 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         print("Usage: python test_issn_lookup.py [journal_name]")
         print("\nExamples:")
-        print("  python test_issn_lookup.py                    # Test multiple journals")
-        print("  python test_issn_lookup.py \"Nature\"            # Test specific journal")
-        print("  python test_issn_lookup.py \"Physical Review Letters\"")
+        print(
+            "  python test_issn_lookup.py                    # Test multiple journals"
+        )
+        print(
+            '  python test_issn_lookup.py "Nature"            # Test specific journal'
+        )
+        print('  python test_issn_lookup.py "Physical Review Letters"')
         sys.exit(1)
-    
+
     asyncio.run(main())

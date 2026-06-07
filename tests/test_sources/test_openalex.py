@@ -1,7 +1,7 @@
 """Tests for OpenAlex source integration."""
 
 import pytest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from src.reflint.sources.openalex import OpenAlexSource
 from src.reflint.sources.base import LookupResult
@@ -196,15 +196,18 @@ class TestOpenAlexSource:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Create proper mock response - use Mock instead of AsyncMock for response
             from unittest.mock import Mock
+
             mock_response = Mock()
             mock_response.json.return_value = mock_response_json
             mock_response.text = str(mock_response_json)
             mock_response.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response
+            mock_client.return_value.__aenter__.return_value.get.return_value = (
+                mock_response
+            )
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_doi("10.1000/123")
@@ -234,14 +237,17 @@ class TestOpenAlexSource:
         """Test DOI lookup when no results found."""
         mock_response = {"results": []}
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Create proper mock response
             from unittest.mock import Mock
+
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
+            mock_client.return_value.__aenter__.return_value.get.return_value = (
+                mock_response_obj
+            )
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_doi("10.1000/123")
@@ -253,7 +259,7 @@ class TestOpenAlexSource:
     @pytest.mark.asyncio
     async def test_lookup_by_doi_http_error(self):
         """Test DOI lookup with HTTP error."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get.side_effect = (
                 Exception("HTTP Error")
             )
@@ -282,14 +288,17 @@ class TestOpenAlexSource:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             from unittest.mock import Mock
+
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.text = str(mock_response)
             mock_response_obj.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
+            mock_client.return_value.__aenter__.return_value.get.return_value = (
+                mock_response_obj
+            )
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 result = await self.source.lookup_by_pmid("12345678")
@@ -315,14 +324,17 @@ class TestOpenAlexSource:
             ]
         }
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             from unittest.mock import Mock
+
             mock_response_obj = Mock()
             mock_response_obj.json.return_value = mock_response
             mock_response_obj.text = str(mock_response)
             mock_response_obj.raise_for_status.return_value = None
 
-            mock_client.return_value.__aenter__.return_value.get.return_value = mock_response_obj
+            mock_client.return_value.__aenter__.return_value.get.return_value = (
+                mock_response_obj
+            )
 
             with patch.object(self.source, "_rate_limit", return_value=None):
                 results = await self.source.lookup_by_title_author(

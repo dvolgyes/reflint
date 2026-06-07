@@ -141,7 +141,7 @@ class TestArxivSource:
   </entry>
 </feed>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = mock_response
             mock_response_obj.raise_for_status.return_value = None
@@ -168,7 +168,7 @@ class TestArxivSource:
     @pytest.mark.asyncio
     async def test_lookup_by_arxiv_http_error(self):
         """Test lookup with HTTP error."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get.side_effect = (
                 Exception("HTTP Error")
             )
@@ -207,7 +207,7 @@ class TestArxivSource:
   </entry>
 </feed>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = mock_response
             mock_response_obj.raise_for_status.return_value = None
@@ -234,7 +234,7 @@ class TestArxivSource:
     @pytest.mark.asyncio
     async def test_search_http_error(self):
         """Test search with HTTP error."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get.side_effect = (
                 Exception("HTTP Error")
             )
@@ -249,7 +249,7 @@ class TestArxivSource:
 <feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
 </feed>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = mock_response
             mock_response_obj.raise_for_status.return_value = None
@@ -305,7 +305,7 @@ class TestArxivSource:
   </entry>
 </feed>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = mock_response
             mock_response_obj.raise_for_status.return_value = None

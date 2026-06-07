@@ -1,6 +1,6 @@
 """BibTeX entry wrapper with enhanced functionality."""
 
-from typing import Any
+from typing import Any, cast
 
 
 class BibTeXEntry:
@@ -14,12 +14,12 @@ class BibTeXEntry:
     @property
     def key(self) -> str:
         """Get the entry key."""
-        return self._entry.get("ID", "")
+        return str(self._entry.get("ID", ""))
 
     @property
     def entry_type(self) -> str:
         """Get the entry type (article, book, etc.)."""
-        return self._entry.get("ENTRYTYPE", "").lower()
+        return str(self._entry.get("ENTRYTYPE", "")).lower()
 
     @property
     def fields(self) -> dict[str, str]:
@@ -54,7 +54,7 @@ class BibTeXEntry:
 
         db = BibDatabase()
         db.entries = [self._entry]
-        return bibtexparser.dumps(db)
+        return cast("str", bibtexparser.dumps(db))
 
     def __str__(self) -> str:
         """String representation."""
@@ -70,4 +70,4 @@ class BibTeXEntry:
 
     def get_all_fields(self) -> list[str]:
         """Get list of all field names."""
-        return [k for k in self._entry.keys() if k not in ["ID", "ENTRYTYPE"]]
+        return [k for k in self._entry if k not in ["ID", "ENTRYTYPE"]]

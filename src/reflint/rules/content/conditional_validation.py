@@ -1,5 +1,7 @@
 """Smart field dependencies for conditional validation."""
 
+from typing import Any, ClassVar
+
 from ..base import BaseRule
 from ...core.entry import BibTeXEntry
 from ...core.validation import RuleViolation
@@ -14,7 +16,7 @@ class ConditionalValidationRule(BaseRule):
     description = "Apply conditional validation logic based on field presence"
 
     # Define field dependency rules
-    DEPENDENCY_RULES = {
+    DEPENDENCY_RULES: ClassVar[dict[str, dict[str, Any]]] = {
         # Skip ISSN validation if arXiv ID is present
         "issn": {
             "skip_if_present": ["arxivid", "eprint"],
@@ -105,45 +107,48 @@ class ConditionalValidationRule(BaseRule):
         violations = []
 
         # Conference papers should have booktitle or journal
-        if entry.entry_type in ["inproceedings", "conference"]:
-            if not entry.has_field("booktitle") and not entry.has_field("journal"):
-                violation = RuleViolation(
-                    rule_id=self.rule_id,
-                    severity="warning",
-                    message="Conference paper missing both 'booktitle' and 'journal' fields",
-                    suggested_fix="Add 'booktitle' field for conference proceedings",
-                )
-                violations.append(violation)
+        if (
+            entry.entry_type in ["inproceedings", "conference"]
+            and not entry.has_field("booktitle")
+            and not entry.has_field("journal")
+        ):
+            violation = RuleViolation(
+                rule_id=self.rule_id,
+                severity="warning",
+                message="Conference paper missing both 'booktitle' and 'journal' fields",
+                suggested_fix="Add 'booktitle' field for conference proceedings",
+            )
+            violations.append(violation)
 
         # Journal articles should have journal
-        if entry.entry_type == "article":
-            if (
-                not entry.has_field("journal")
-                and not entry.has_field("arxivid")
-                and not entry.has_field("eprint")
-            ):
-                violation = RuleViolation(
-                    rule_id=self.rule_id,
-                    severity="warning",
-                    message="Article missing 'journal' field and not identified as preprint",
-                    suggested_fix="Add 'journal' field or arXiv identifier",
-                )
-                violations.append(violation)
+        if (
+            entry.entry_type == "article"
+            and not entry.has_field("journal")
+            and not entry.has_field("arxivid")
+            and not entry.has_field("eprint")
+        ):
+            violation = RuleViolation(
+                rule_id=self.rule_id,
+                severity="warning",
+                message="Article missing 'journal' field and not identified as preprint",
+                suggested_fix="Add 'journal' field or arXiv identifier",
+            )
+            violations.append(violation)
 
         # Books should have publisher or URL/DOI
-        if entry.entry_type in ["book", "proceedings"]:
-            if (
-                not entry.has_field("publisher")
-                and not entry.has_field("url")
-                and not entry.has_field("doi")
-            ):
-                violation = RuleViolation(
-                    rule_id=self.rule_id,
-                    severity="warning",
-                    message="Book/proceedings missing publisher and access information",
-                    suggested_fix="Add 'publisher' field or URL/DOI for access",
-                )
-                violations.append(violation)
+        if (
+            entry.entry_type in ["book", "proceedings"]
+            and not entry.has_field("publisher")
+            and not entry.has_field("url")
+            and not entry.has_field("doi")
+        ):
+            violation = RuleViolation(
+                rule_id=self.rule_id,
+                severity="warning",
+                message="Book/proceedings missing publisher and access information",
+                suggested_fix="Add 'publisher' field or URL/DOI for access",
+            )
+            violations.append(violation)
 
         return violations
 

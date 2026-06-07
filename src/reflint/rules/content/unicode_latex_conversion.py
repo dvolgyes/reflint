@@ -1,8 +1,10 @@
 """Unicode to LaTeX character conversion rule."""
 
-from typing import ClassVar
+import re
+from typing import ClassVar, Literal
 
 from ...core.validation import RuleViolation
+from ...core.entry import BibTeXEntry
 from ..base import BaseRule
 
 
@@ -46,11 +48,11 @@ class UnicodeLatexConversionRule(BaseRule):
     """Rule for converting Unicode characters to LaTeX equivalents."""
 
     rule_id: ClassVar[str] = "C002"
-    severity: ClassVar[str] = "info"
+    severity: ClassVar[Literal["error", "warning", "info"]] = "info"
     category: ClassVar[str] = "content"
     description: ClassVar[str] = "Convert Unicode characters to LaTeX equivalents"
 
-    def __init__(self, quote_style: dict[str, str] | None = None):
+    def __init__(self, quote_style: dict[str, str] | None = None) -> None:
         """Initialize with configurable quote style."""
         super().__init__()
         self.quote_style = quote_style or QuoteStyle.LATEX_TRADITIONAL
@@ -243,7 +245,7 @@ class UnicodeLatexConversionRule(BaseRule):
         "series",
     ]
 
-    def validate(self, entry):
+    def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:
         """Check for Unicode characters that should be converted to LaTeX."""
         violations = []
 
@@ -322,14 +324,12 @@ class UnicodeLatexConversionRule(BaseRule):
         Convert Unicode quotes to csquotes LaTeX commands.
         This handles proper nesting of quote content.
         """
-        import re
-
-        conversions = []
+        conversions: list[tuple[str, str]] = []
 
         # Handle double quotes
         double_quote_pattern = r"\u201c([^\u201d]*?)\u201d"
 
-        def replace_double(match):
+        def replace_double(match: re.Match[str]) -> str:
             content = match.group(1)
             conversions.append(("\u201c", r"\enquote{"))
             conversions.append(("\u201d", "}"))
@@ -340,7 +340,7 @@ class UnicodeLatexConversionRule(BaseRule):
         # Handle single quotes
         single_quote_pattern = r"\u2018([^\u2019]*?)\u2019"
 
-        def replace_single(match):
+        def replace_single(match: re.Match[str]) -> str:
             content = match.group(1)
             conversions.append(("\u2018", r"\enquote*{"))
             conversions.append(("\u2019", "}"))

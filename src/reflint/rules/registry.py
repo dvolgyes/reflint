@@ -1,5 +1,7 @@
 """Rule registration and management system."""
 
+from typing import Any
+
 from loguru import logger
 
 from .base import BaseRule
@@ -82,9 +84,9 @@ class RuleRegistry:
             metadata={"rules_run": [r.rule_id for r in rules_to_run]},
         )
 
-    def get_statistics(self) -> dict:
+    def get_statistics(self) -> dict[str, Any]:
         """Get statistics about registered rules."""
-        stats = {
+        return {
             "total_rules": len(self._rules),
             "categories": list(self._rules_by_category.keys()),
             "rules_by_category": {
@@ -92,7 +94,6 @@ class RuleRegistry:
             },
             "fixable_rules": sum(1 for rule in self._rules.values() if rule.can_fix()),
         }
-        return stats
 
 
 # Global registry instance

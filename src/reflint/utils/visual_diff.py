@@ -88,8 +88,7 @@ class VisualDiff:
         """
         if NWALIGN_AVAILABLE:
             return self._generate_nwalign_diff(original, modified)
-        else:
-            return self._generate_simple_diff(original, modified)
+        return self._generate_simple_diff(original, modified)
 
     def _generate_nwalign_diff(self, original: str, modified: str) -> DiffSummary:
         """Generate diff using nwalign3 for precise alignment."""
@@ -242,23 +241,23 @@ class VisualDiff:
 
         if change.change_type == "insert":
             return f"{Fore.GREEN}+{change.new_text}{Style.RESET_ALL}"
-        elif change.change_type == "delete":
+        if change.change_type == "delete":
             return f"{Fore.RED}-{change.old_text}{Style.RESET_ALL}"
-        elif change.change_type == "replace":
+        if change.change_type == "replace":
             return f"{Fore.RED}-{change.old_text}{Style.RESET_ALL}{Fore.GREEN}+{change.new_text}{Style.RESET_ALL}"
-        else:  # equal
-            return change.old_text
+        # equal
+        return change.old_text
 
     def _format_change_plain(self, change: DiffChange) -> str:
         """Format a change without colors for plain text output."""
         if change.change_type == "insert":
             return f"[+{change.new_text}]"
-        elif change.change_type == "delete":
+        if change.change_type == "delete":
             return f"[-{change.old_text}]"
-        elif change.change_type == "replace":
+        if change.change_type == "replace":
             return f"[-{change.old_text}+{change.new_text}]"
-        else:  # equal
-            return change.old_text
+        # equal
+        return change.old_text
 
     def format_diff_summary(self, summary: DiffSummary) -> str:
         """Format a complete diff summary with statistics.
@@ -374,12 +373,12 @@ class VisualDiff:
                         mod_display = f"{Fore.YELLOW}{mod_display}{Style.RESET_ALL}"
                 else:
                     if orig_line and not mod_line:
-                        orig_display = f"[-] {orig_display[4:]}"
+                        orig_display = f"[-] {orig_line}".ljust(col_width)
                     elif not orig_line and mod_line:
-                        mod_display = f"[+] {mod_display[4:]}"
+                        mod_display = f"[+] {mod_line}".ljust(col_width)
                     else:
-                        orig_display = f"[~] {orig_display[4:]}"
-                        mod_display = f"[~] {mod_display[4:]}"
+                        orig_display = f"[~] {orig_line}".ljust(col_width)
+                        mod_display = f"[~] {mod_line}".ljust(col_width)
 
             lines.append(f"{orig_display} | {mod_display}")
 

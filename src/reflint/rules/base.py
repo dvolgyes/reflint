@@ -1,7 +1,7 @@
 """Base classes for validation rules."""
 
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import ClassVar, Literal
 
 from ..core.entry import BibTeXEntry
 from ..core.validation import RuleViolation
@@ -10,10 +10,10 @@ from ..core.validation import RuleViolation
 class BaseRule(ABC):
     """Base class for all validation rules."""
 
-    rule_id: str
-    severity: Literal["error", "warning", "info"]
-    category: str
-    description: str
+    rule_id: ClassVar[str]
+    severity: ClassVar[Literal["error", "warning", "info"]]
+    category: ClassVar[str]
+    description: ClassVar[str]
 
     @abstractmethod
     def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:
@@ -38,7 +38,7 @@ class BaseRule(ABC):
 class FieldValidationRule(BaseRule):
     """Base class for rules that validate specific fields."""
 
-    def __init__(self, field_name: str):
+    def __init__(self, field_name: str) -> None:
         self.field_name = field_name
 
     def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:
@@ -63,7 +63,7 @@ class FieldValidationRule(BaseRule):
 class EntryTypeRule(BaseRule):
     """Base class for rules that apply to specific entry types."""
 
-    def __init__(self, entry_types: list[str]):
+    def __init__(self, entry_types: list[str]) -> None:
         self.entry_types = [t.lower() for t in entry_types]
 
     def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:

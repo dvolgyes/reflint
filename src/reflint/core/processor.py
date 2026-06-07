@@ -1,7 +1,8 @@
 """Main processor for BibTeX file operations."""
 
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO, cast
+from collections.abc import Iterator
 import sys
 
 from loguru import logger
@@ -27,7 +28,7 @@ class BibTeXProcessor:
         logger.info(f"Loading BibTeX file: {file_path}")
 
         try:
-            with open(file_path, encoding="utf-8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 self._load_from_stream(f)
         except FileNotFoundError:
             logger.error(f"File not found: {file_path}")
@@ -63,7 +64,7 @@ class BibTeXProcessor:
         logger.info(f"Saving BibTeX file: {file_path}")
 
         try:
-            with open(file_path, "w", encoding="utf-8") as f:
+            with file_path.open("w", encoding="utf-8") as f:
                 f.write(self.to_bibtex())
         except Exception as e:
             logger.error(f"Error writing file {file_path}: {e}")
@@ -72,7 +73,7 @@ class BibTeXProcessor:
     def save_to_stdout(self) -> None:
         """Save BibTeX entries to stdout."""
         logger.debug("Writing BibTeX to stdout")
-        print(self.to_bibtex())
+        sys.stdout.write(f"{self.to_bibtex()}\n")
 
     def to_bibtex(self) -> str:
         """Convert all entries to BibTeX string."""
@@ -87,7 +88,7 @@ class BibTeXProcessor:
         writer.indent = "  "
         writer.align_values = True
 
-        return bibtexparser.dumps(self._database, writer)
+        return cast("str", bibtexparser.dumps(self._database, writer))
 
     def get_entry_by_key(self, key: str) -> BibTeXEntry | None:
         """Get an entry by its key."""
@@ -133,7 +134,7 @@ class BibTeXProcessor:
         """Return number of entries."""
         return len(self.entries)
 
-    def __iter__(self):  # type: ignore[no-untyped-def]
+    def __iter__(self) -> Iterator[BibTeXEntry]:
         """Iterate over entries."""
         return iter(self.entries)
 
@@ -171,7 +172,7 @@ class BibTeXProcessor:
 
         return results
 
-    def get_validation_summary(self, results: list[ValidationResult]) -> dict:
+    def get_validation_summary(self, results: list[ValidationResult]) -> dict[str, Any]:
         """Get summary statistics from validation results."""
         return {
             "total_entries": len(results),

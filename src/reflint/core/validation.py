@@ -1,6 +1,6 @@
 """Validation result classes and utilities."""
 
-from typing import Literal
+from typing import Any, Literal
 from dataclasses import dataclass
 
 
@@ -26,7 +26,7 @@ class ValidationResult:
 
     entry_key: str
     violations: list[RuleViolation]
-    metadata: dict
+    metadata: dict[str, Any]
 
     @property
     def has_errors(self) -> bool:

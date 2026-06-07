@@ -10,7 +10,7 @@ import time
 from typing import Any
 import xml.etree.ElementTree as ET
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 from .base import (
@@ -480,10 +480,9 @@ class PubMedSource(BaseDataSource):
         if article_date is not None:
             year_elem = article_date.find(".//Year")
             if year_elem is not None and year_elem.text:
-                try:
+                year_text = year_elem.text.strip()
+                if year_text.isdigit():
                     pub_date["year"] = int(year_elem.text.strip())
-                except ValueError:
-                    pass
 
             month_elem = article_date.find(".//Month")
             if month_elem is not None and month_elem.text:
@@ -577,9 +576,7 @@ class PubMedSource(BaseDataSource):
         title = re.sub(r"\s+", " ", title.strip())
 
         # Remove trailing periods (common in PubMed)
-        title = title.rstrip(".")
-
-        return title
+        return title.rstrip(".")
 
     def _format_authors(self, authors: list[str]) -> str:
         """Format author list for BibTeX."""

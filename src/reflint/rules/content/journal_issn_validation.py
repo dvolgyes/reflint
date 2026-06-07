@@ -18,7 +18,7 @@ class JournalIssnValidationRule(BaseRule):
         "Validates journal names against ISSN records and suggests standardizations"
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.reliability_registry = get_reliability_registry()
 
@@ -68,7 +68,7 @@ class JournalIssnValidationRule(BaseRule):
 
     def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:
         """Validate journal-ISSN consistency and suggest improvements."""
-        results = []
+        results: list[RuleViolation] = []
 
         journal = entry.get_field("journal")
         issn = entry.get_field("issn")
@@ -148,10 +148,7 @@ class JournalIssnValidationRule(BaseRule):
         normalized = re.sub(r"\bSci\.\s*", "Science ", normalized)
 
         # Fix spacing issues
-        normalized = re.sub(r"\s+", " ", normalized)
-        normalized = normalized.strip()
-
-        return normalized
+        return re.sub(r"\s+", " ", normalized).strip()
 
     def _validate_issn_format(self, issn: str) -> RuleViolation | None:
         """Validate ISSN format."""
@@ -162,8 +159,7 @@ class JournalIssnValidationRule(BaseRule):
         clean_issn = issn.strip().upper()
 
         # Remove common prefixes like "ISSN "
-        if clean_issn.startswith("ISSN "):
-            clean_issn = clean_issn[5:]
+        clean_issn = clean_issn.removeprefix("ISSN ")
 
         # ISSN format: NNNN-NNNX where X can be a digit or X
         issn_pattern = r"^\d{4}-\d{3}[\dX]$"
@@ -217,15 +213,14 @@ class JournalIssnValidationRule(BaseRule):
         self, journal: str, issn: str | None
     ) -> list[RuleViolation]:
         """Cross-validate journal name against ISSN."""
-        results = []
+        results: list[RuleViolation] = []
 
         if not issn:
             return results
 
         # Clean ISSN for comparison
         clean_issn = issn.strip().upper()
-        if clean_issn.startswith("ISSN "):
-            clean_issn = clean_issn[5:]
+        clean_issn = clean_issn.removeprefix("ISSN ")
 
         # Check against known mappings
         known_issns = self._get_known_issns(journal)

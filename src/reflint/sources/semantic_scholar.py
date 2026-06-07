@@ -1,9 +1,11 @@
 """Semantic Scholar API integration for academic paper metadata."""
 
+import asyncio
 import time
+from typing import Any, cast
 from urllib.parse import quote
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 from .base import (
@@ -14,6 +16,7 @@ from .base import (
     DataSourceError,
 )
 from ..core.entry import BibTeXEntry
+from ..utils.cached_http import cached_httpx_get
 
 
 class SemanticScholarSource(BaseDataSource):
@@ -51,14 +54,40 @@ class SemanticScholarSource(BaseDataSource):
     async def _get_session(self) -> httpx.AsyncClient:
         """Get or create HTTP session."""
         if self._session is None:
-            headers = {"User-Agent": "ReflInt/1.0 (https://github.com/reflint/reflint)"}
-            if self.api_key:
-                headers["x-api-key"] = self.api_key
-
             self._session = httpx.AsyncClient(
-                headers=headers, timeout=self.timeout, follow_redirects=True
+                headers=self._get_headers(), timeout=self.timeout, follow_redirects=True
             )
         return self._session
+
+    def _get_headers(self) -> dict[str, str]:
+        """Build request headers for Semantic Scholar."""
+        headers = {"User-Agent": "ReflInt/1.0 (https://github.com/reflint/reflint)"}
+        if self.api_key:
+            headers["x-api-key"] = self.api_key
+        return headers
+
+    async def _cached_get_with_retry(
+        self, url: str, params: dict[str, Any], max_retries: int = 3
+    ) -> httpx.Response:
+        """GET with bounded retry for Semantic Scholar rate limiting."""
+        retry_count = 0
+        while retry_count <= max_retries:
+            try:
+                return await cached_httpx_get(
+                    url=url,
+                    params=params,
+                    headers=self._get_headers(),
+                    timeout=float(self.timeout),
+                )
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code != 429:
+                    raise
+                retry_count += 1
+                if retry_count > max_retries:
+                    raise
+                await asyncio.sleep(min(retry_count * 2, 60))
+
+        raise DataSourceError("Semantic Scholar retry loop exhausted unexpectedly")
 
     async def lookup_by_doi(self, doi: str) -> LookupResult:
         """Look up entry by DOI."""
@@ -75,7 +104,6 @@ class SemanticScholarSource(BaseDataSource):
     async def _lookup_by_identifier(self, id_type: str, value: str) -> LookupResult:
         """Look up entry by identifier type."""
         start_time = time.time()
-        session = await self._get_session()
 
         # Clean identifier
         clean_value = value.strip()
@@ -88,7 +116,7 @@ class SemanticScholarSource(BaseDataSource):
         params = {"fields": ",".join(self.paper_fields)}
 
         try:
-            response = await session.get(url, params=params)
+            response = await self._cached_get_with_retry(url, params)
             lookup_time = time.time() - start_time
 
             if response.status_code == 404:
@@ -104,7 +132,7 @@ class SemanticScholarSource(BaseDataSource):
                 )
 
             response.raise_for_status()
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
 
             entry = self._convert_to_bibtex(data)
 
@@ -133,8 +161,7 @@ class SemanticScholarSource(BaseDataSource):
                         error="Rate limited",
                     ),
                 )
-            else:
-                raise DataSourceError(f"Semantic Scholar API error: {e}")
+            raise DataSourceError(f"Semantic Scholar API error: {e}")
 
         except Exception as e:
             lookup_time = time.time() - start_time
@@ -145,8 +172,6 @@ class SemanticScholarSource(BaseDataSource):
     ) -> list[LookupResult]:
         """Look up entries by title and author."""
         start_time = time.time()
-        session = await self._get_session()
-
         # Build query
         query_parts = []
         if title:
@@ -159,11 +184,11 @@ class SemanticScholarSource(BaseDataSource):
         params = {"query": query, "limit": "5", "fields": ",".join(self.paper_fields)}
 
         try:
-            response = await session.get(url, params=params)
+            response = await self._cached_get_with_retry(url, params)
             lookup_time = time.time() - start_time
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             papers = data.get("data", [])
 
             results = []
@@ -190,7 +215,7 @@ class SemanticScholarSource(BaseDataSource):
         except Exception as e:
             raise DataSourceError(f"Semantic Scholar title/author search failed: {e}")
 
-    def _convert_to_bibtex(self, paper: dict) -> BibTeXEntry | None:
+    def _convert_to_bibtex(self, paper: dict[str, Any]) -> BibTeXEntry | None:
         """Convert Semantic Scholar paper data to BibTeX entry."""
         if not paper:
             return None
@@ -266,7 +291,7 @@ class SemanticScholarSource(BaseDataSource):
 
         return BibTeXEntry(entry_data)
 
-    def _determine_entry_type(self, paper: dict) -> str:
+    def _determine_entry_type(self, paper: dict[str, Any]) -> str:
         """Determine BibTeX entry type from Semantic Scholar data."""
         publication_types = paper.get("publicationTypes", [])
         venue = paper.get("venue", "").lower()
@@ -275,23 +300,21 @@ class SemanticScholarSource(BaseDataSource):
         # Check publication types
         if "JournalArticle" in publication_types:
             return "article"
-        elif (
-            "Conference" in publication_types or "ConferencePaper" in publication_types
-        ):
+        if "Conference" in publication_types or "ConferencePaper" in publication_types:
             return "inproceedings"
-        elif "Book" in publication_types:
+        if "Book" in publication_types:
             return "book"
-        elif "BookSection" in publication_types:
+        if "BookSection" in publication_types:
             return "inbook"
-        elif "Thesis" in publication_types:
+        if "Thesis" in publication_types:
             return "phdthesis"
-        elif "Review" in publication_types:
+        if "Review" in publication_types:
             return "article"
 
         # Check venue information
         if journal_info or "journal" in venue:
             return "article"
-        elif any(
+        if any(
             conf_word in venue
             for conf_word in ["conference", "workshop", "symposium", "proceedings"]
         ):
@@ -304,7 +327,7 @@ class SemanticScholarSource(BaseDataSource):
 
         return "misc"  # Default
 
-    def _extract_authors(self, paper: dict) -> str | None:
+    def _extract_authors(self, paper: dict[str, Any]) -> str | None:
         """Extract authors from Semantic Scholar data."""
         authors = paper.get("authors", [])
         if not authors:
@@ -318,23 +341,23 @@ class SemanticScholarSource(BaseDataSource):
 
         return " and ".join(author_strings) if author_strings else None
 
-    def _extract_venue(self, paper: dict, entry_type: str) -> str | None:
+    def _extract_venue(self, paper: dict[str, Any], entry_type: str) -> str | None:
         """Extract venue information."""
         # First try the venue field
         venue = paper.get("venue")
         if venue:
-            return venue
+            return str(venue)
 
         # Try journal information
         journal = paper.get("journal", {})
         if journal:
             journal_name = journal.get("name")
             if journal_name:
-                return journal_name
+                return str(journal_name)
 
         return None
 
-    def _extract_fields_of_study(self, paper: dict) -> str | None:
+    def _extract_fields_of_study(self, paper: dict[str, Any]) -> str | None:
         """Extract fields of study as keywords."""
         # Try S2 fields first (more detailed)
         s2_fields = paper.get("s2FieldsOfStudy", [])
@@ -354,7 +377,7 @@ class SemanticScholarSource(BaseDataSource):
 
         return None
 
-    def _generate_key(self, paper: dict) -> str:
+    def _generate_key(self, paper: dict[str, Any]) -> str:
         """Generate BibTeX key from paper data."""
         # Get first author's last name
         authors = paper.get("authors", [])

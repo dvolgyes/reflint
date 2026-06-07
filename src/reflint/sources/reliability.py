@@ -42,11 +42,11 @@ class SourceReliabilityProfile:
 class SourceReliabilityRegistry:
     """Registry of source reliability profiles and hierarchy management."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._profiles: dict[str, SourceReliabilityProfile] = {}
         self._initialize_default_profiles()
 
-    def _initialize_default_profiles(self):
+    def _initialize_default_profiles(self) -> None:
         """Initialize default reliability profiles for known sources."""
 
         # CrossRef - Primary tier, DOI authority
@@ -356,7 +356,7 @@ class SourceReliabilityRegistry:
         return weighted_confidence_sum / total_weight if total_weight > 0 else 0.0
 
     def recommend_lookup_strategy(
-        self, identifiers: dict[str, str], domains: list[str] = None
+        self, identifiers: dict[str, str], domains: list[str] | None = None
     ) -> list[str]:
         """Recommend optimal lookup strategy based on available identifiers and domains."""
         strategy = []
@@ -408,7 +408,7 @@ class SourceReliabilityRegistry:
             return None, 0.0
 
         # Collect all values with their confidence scores
-        value_scores = {}
+        value_scores: dict[str, float] = {}
 
         for result in results:
             if result.entry and result.entry.has_field(field_name):
@@ -443,7 +443,7 @@ class SourceReliabilityRegistry:
 
     def get_source_statistics(self) -> dict[str, Any]:
         """Get statistics about registered sources."""
-        stats = {
+        stats: dict[str, Any] = {
             "total_sources": len(self._profiles),
             "by_tier": {
                 tier.value: len(self.get_sources_by_tier(tier)) for tier in SourceTier

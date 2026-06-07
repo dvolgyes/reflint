@@ -18,7 +18,7 @@ class PublicationNameStandardizationRule(BaseRule):
         "Standardizes publication names using fuzzy matching and known venue mappings"
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.fuzzy_matcher = get_fuzzy_matcher()
 
@@ -212,9 +212,7 @@ class PublicationNameStandardizationRule(BaseRule):
             )
 
         # Clean up spacing
-        standardized = re.sub(r"\s+", " ", standardized).strip()
-
-        return standardized
+        return re.sub(r"\s+", " ", standardized).strip()
 
     def _find_fuzzy_standardization(self, venue: str) -> str | None:
         """Find fuzzy matches for venue standardization."""

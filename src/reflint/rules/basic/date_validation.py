@@ -3,7 +3,7 @@
 import re
 from calendar import monthrange
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 from ..base import FieldValidationRule
 from ...core.entry import BibTeXEntry
@@ -14,7 +14,7 @@ class DateValidationRule(FieldValidationRule):
     """Rule D001: Advanced date validation with coherence checking."""
 
     rule_id: ClassVar[str] = "D001"
-    severity: ClassVar[str] = "warning"
+    severity: ClassVar[Literal["error", "warning", "info"]] = "warning"
     category: ClassVar[str] = "content"
     description: ClassVar[str] = (
         "Date fields must be properly formatted and valid with coherence checking"
@@ -155,7 +155,9 @@ class DateValidationRule(FieldValidationRule):
                 )
             )
         elif year_int < 1970:
-            severity = "warning" if year_int < 1900 else "info"
+            severity: Literal["warning", "info"] = (
+                "warning" if year_int < 1900 else "info"
+            )
             violations.append(
                 RuleViolation(
                     rule_id=self.rule_id,

@@ -1,8 +1,9 @@
 """Content cleanup and text sanitization rule."""
 
 import re
-from typing import ClassVar
+from typing import ClassVar, Literal
 
+from ...core.entry import BibTeXEntry
 from ...core.validation import RuleViolation
 from ..base import BaseRule
 
@@ -11,7 +12,7 @@ class ContentCleanupRule(BaseRule):
     """Rule for cleaning up and sanitizing text content in BibTeX fields."""
 
     rule_id: ClassVar[str] = "C003"
-    severity: ClassVar[str] = "info"
+    severity: ClassVar[Literal["error", "warning", "info"]] = "info"
     category: ClassVar[str] = "content"
     description: ClassVar[str] = "Clean up and sanitize text content"
 
@@ -30,7 +31,7 @@ class ContentCleanupRule(BaseRule):
         "ID",  # Entry ID needs special handling
     ]
 
-    def validate(self, entry):
+    def validate(self, entry: BibTeXEntry) -> list[RuleViolation]:
         """Check for content that needs cleanup."""
         violations = []
 

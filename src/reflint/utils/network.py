@@ -3,11 +3,11 @@
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlparse
 from enum import Enum
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -210,7 +210,7 @@ class URLAnalyzer:
 
         return url_results
 
-    def analyze_url_quality(self, url: str) -> dict:
+    def analyze_url_quality(self, url: str) -> dict[str, Any]:
         """Analyze URL quality and provide recommendations."""
         parsed = urlparse(url)
         issues = []
@@ -367,10 +367,11 @@ class URLAnalyzer:
 
             response = await session.get(wayback_api)
             if response.status_code == 200:
-                data = response.json()
+                data = cast("dict[str, Any]", response.json())
                 archived = data.get("archived_snapshots", {}).get("closest")
                 if archived and archived.get("available"):
-                    return archived.get("url")
+                    archive_url = archived.get("url")
+                    return str(archive_url) if archive_url else None
 
         except Exception as e:
             logger.debug(f"Error checking Wayback Machine: {e}")
@@ -438,7 +439,9 @@ class LinkChecker:
 
         return results
 
-    async def get_broken_links_report(self, entries: list["BibTeXEntry"]) -> dict:
+    async def get_broken_links_report(
+        self, entries: list["BibTeXEntry"]
+    ) -> dict[str, Any]:
         """Generate report of broken links across all entries."""
         all_results = {}
         broken_links = []

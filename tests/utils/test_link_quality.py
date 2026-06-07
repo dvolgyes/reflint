@@ -125,7 +125,7 @@ class TestLinkQualityManager:
         """Test successful URL status checking."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock successful response
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -147,7 +147,7 @@ class TestLinkQualityManager:
         """Test URL status checking with redirect."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock redirect response
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -169,7 +169,7 @@ class TestLinkQualityManager:
         """Test URL status checking with error."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock error response
             mock_client.return_value.__aenter__.return_value.head.side_effect = (
                 Exception("Network error")
@@ -222,7 +222,7 @@ class TestLinkQualityManager:
         """Test successful archive URL lookup."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock archive API response
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -254,7 +254,7 @@ class TestLinkQualityManager:
         """Test archive URL lookup when not found."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock empty archive response
             mock_response = AsyncMock()
             mock_response.status_code = 200
@@ -313,7 +313,7 @@ class TestLinkQualityManager:
         """Test resolving redirect chains."""
         manager = LinkQualityManager()
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             # Mock redirect chain
             responses = [
                 AsyncMock(status_code=301, headers={"location": "https://step1.com"}),
@@ -432,7 +432,7 @@ class TestURLShortenerDetector:
     @pytest.mark.asyncio
     async def test_resolve_shortened_url(self):
         """Test shortened URL resolution."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response = AsyncMock()
             mock_response.url = "https://final-destination.com"
 

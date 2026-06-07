@@ -255,7 +255,7 @@ class IdentifierExtractor:
             expected = "X" if check_digit == 10 else str(check_digit)
             return digits[9].upper() == expected
 
-        elif len(digits) == 13:
+        if len(digits) == 13:
             # ISBN-13
             checksum = 0
             for i, char in enumerate(digits[:12]):
@@ -271,9 +271,9 @@ class IdentifierExtractor:
         """Get canonical URL for an identifier."""
         if identifier_type == "doi":
             return f"https://doi.org/{value}"
-        elif identifier_type == "arxiv":
+        if identifier_type == "arxiv":
             return f"https://arxiv.org/abs/{value}"
-        elif identifier_type == "pmid":
+        if identifier_type == "pmid":
             return f"https://pubmed.ncbi.nlm.nih.gov/{value}/"
 
         return None

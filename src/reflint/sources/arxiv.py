@@ -9,7 +9,7 @@ import time
 from typing import Any
 import xml.etree.ElementTree as ET
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 from .base import (
@@ -415,9 +415,7 @@ class ArxivSource(BaseDataSource):
         title = re.sub(r"\s+", " ", title.strip())
 
         # arXiv titles sometimes have newlines
-        title = title.replace("\n", " ")
-
-        return title
+        return title.replace("\n", " ")
 
     def _clean_abstract(self, abstract: str) -> str:
         """Clean and format abstract."""
@@ -429,9 +427,7 @@ class ArxivSource(BaseDataSource):
 
         # Remove newlines but preserve paragraph breaks
         abstract = re.sub(r"\n\s*\n", "\n\n", abstract)
-        abstract = abstract.replace("\n", " ")
-
-        return abstract
+        return abstract.replace("\n", " ")
 
     def _format_authors(self, authors: list[str]) -> str:
         """Format author list for BibTeX."""

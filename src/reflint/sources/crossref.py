@@ -1,9 +1,10 @@
 """CrossRef API integration for bibliographic metadata."""
 
 import time
+from typing import Any, cast
 from urllib.parse import quote
 
-import httpx
+import httpx2 as httpx
 from loguru import logger
 
 from .base import (
@@ -71,7 +72,7 @@ class CrossRefSource(BaseDataSource):
                 )
 
             response.raise_for_status()
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
 
             # Extract work data
             work = data.get("message", {})
@@ -102,8 +103,7 @@ class CrossRefSource(BaseDataSource):
                         error="Rate limited",
                     ),
                 )
-            else:
-                raise DataSourceError(f"CrossRef API error: {e}")
+            raise DataSourceError(f"CrossRef API error: {e}")
 
         except Exception as e:
             lookup_time = time.time() - start_time
@@ -136,7 +136,7 @@ class CrossRefSource(BaseDataSource):
             lookup_time = time.time() - start_time
             response.raise_for_status()
 
-            data = response.json()
+            data = cast("dict[str, Any]", response.json())
             items = data.get("message", {}).get("items", [])
 
             results = []
@@ -163,7 +163,7 @@ class CrossRefSource(BaseDataSource):
         except Exception as e:
             raise DataSourceError(f"CrossRef title/author search failed: {e}")
 
-    def _convert_to_bibtex(self, work: dict, doi: str) -> BibTeXEntry | None:
+    def _convert_to_bibtex(self, work: dict[str, Any], doi: str) -> BibTeXEntry | None:
         """Convert CrossRef work data to BibTeX entry."""
         if not work:
             return None
@@ -232,7 +232,7 @@ class CrossRefSource(BaseDataSource):
 
         return BibTeXEntry(entry_data)
 
-    def _determine_entry_type(self, work: dict) -> str:
+    def _determine_entry_type(self, work: dict[str, Any]) -> str:
         """Determine BibTeX entry type from CrossRef data."""
         type_mapping = {
             "journal-article": "article",
@@ -248,14 +248,14 @@ class CrossRefSource(BaseDataSource):
         crossref_type = work.get("type", "")
         return type_mapping.get(crossref_type, "misc")
 
-    def _extract_title(self, work: dict) -> str | None:
+    def _extract_title(self, work: dict[str, Any]) -> str | None:
         """Extract title from CrossRef data."""
         titles = work.get("title", [])
         if titles and isinstance(titles, list) and len(titles) > 0:
-            return titles[0]
+            return cast(str, titles[0])
         return None
 
-    def _extract_authors(self, work: dict) -> str | None:
+    def _extract_authors(self, work: dict[str, Any]) -> str | None:
         """Extract authors from CrossRef data."""
         authors = work.get("author", [])
         if not authors:
@@ -274,7 +274,7 @@ class CrossRefSource(BaseDataSource):
 
         return " and ".join(author_strings) if author_strings else None
 
-    def _extract_venue(self, work: dict, entry_type: str) -> str | None:
+    def _extract_venue(self, work: dict[str, Any], entry_type: str) -> str | None:
         """Extract venue information."""
         container_title = work.get("container-title", [])
         if (
@@ -282,17 +282,17 @@ class CrossRefSource(BaseDataSource):
             and isinstance(container_title, list)
             and len(container_title) > 0
         ):
-            return container_title[0]
+            return cast(str, container_title[0])
 
         # Fallback to publisher for books
         if entry_type in ["book", "inbook"]:
             publisher = work.get("publisher")
             if publisher:
-                return publisher
+                return str(publisher)
 
         return None
 
-    def _extract_year(self, work: dict) -> str | None:
+    def _extract_year(self, work: dict[str, Any]) -> str | None:
         """Extract publication year."""
         # Try published date first
         published = work.get("published", {})
@@ -310,26 +310,27 @@ class CrossRefSource(BaseDataSource):
 
         return None
 
-    def _extract_pages(self, work: dict) -> str | None:
+    def _extract_pages(self, work: dict[str, Any]) -> str | None:
         """Extract page information."""
         page = work.get("page")
         if page:
             # Convert hyphens to en-dashes
-            return page.replace("-", "--")
+            return str(page).replace("-", "--")
         return None
 
-    def _extract_publisher(self, work: dict) -> str | None:
+    def _extract_publisher(self, work: dict[str, Any]) -> str | None:
         """Extract publisher information."""
-        return work.get("publisher")
+        publisher = work.get("publisher")
+        return str(publisher) if publisher else None
 
-    def _extract_issn(self, work: dict) -> str | None:
+    def _extract_issn(self, work: dict[str, Any]) -> str | None:
         """Extract ISSN."""
         issns = work.get("ISSN", [])
         if issns and isinstance(issns, list) and len(issns) > 0:
-            return issns[0]
+            return cast(str, issns[0])
         return None
 
-    def _generate_key(self, work: dict) -> str:
+    def _generate_key(self, work: dict[str, Any]) -> str:
         """Generate BibTeX key from work data."""
         # Get first author's last name
         authors = work.get("author", [])
@@ -344,7 +345,7 @@ class CrossRefSource(BaseDataSource):
 
         # Get year
         year = self._extract_year(work)
-        year_key = year if year else "unknown"
+        year_key = year or "unknown"
 
         # Get first word of title
         title = self._extract_title(work)

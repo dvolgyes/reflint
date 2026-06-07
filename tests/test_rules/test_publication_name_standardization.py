@@ -338,7 +338,7 @@ class TestPublicationNameStandardizationRule:
         # Should not generate fuzzy match suggestions for very short names
         # (unless there's an exact match in standardizations)
         fuzzy_results = [r for r in results if "Similar publication" in r.message]
-        # This test mainly ensures no exceptions are thrown
+        assert fuzzy_results == []
         assert isinstance(results, list)
 
     def test_standardization_priority_over_fuzzy(self):

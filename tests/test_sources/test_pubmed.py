@@ -163,7 +163,7 @@ class TestPubMedSource:
   </PubmedArticle>
 </PubmedArticleSet>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = mock_response
             mock_response_obj.raise_for_status.return_value = None
@@ -198,7 +198,7 @@ class TestPubMedSource:
     @pytest.mark.asyncio
     async def test_lookup_by_pmid_http_error(self):
         """Test PMID lookup with HTTP error."""
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client.return_value.__aenter__.return_value.get.side_effect = (
                 Exception("HTTP Error")
             )
@@ -247,7 +247,7 @@ class TestPubMedSource:
   </PubmedArticle>
 </PubmedArticleSet>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client_instance = mock_client.return_value.__aenter__.return_value
 
             # First call returns search results, second call returns article details
@@ -273,7 +273,7 @@ class TestPubMedSource:
   </IdList>
 </eSearchResult>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_response_obj = AsyncMock()
             mock_response_obj.text = search_response
             mock_response_obj.raise_for_status.return_value = None
@@ -326,7 +326,7 @@ class TestPubMedSource:
   </PubmedArticle>
 </PubmedArticleSet>"""
 
-        with patch("httpx.AsyncClient") as mock_client:
+        with patch("httpx2.AsyncClient") as mock_client:
             mock_client_instance = mock_client.return_value.__aenter__.return_value
 
             responses = [

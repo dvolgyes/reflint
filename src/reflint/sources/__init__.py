@@ -8,11 +8,11 @@ from .fuzzy_matching import FuzzyMatcher, get_fuzzy_matcher
 __all__ = [
     "BaseDataSource",
     "DataSourceError",
-    "SourceMetadata",
     "DataSourceRegistry",
-    "get_registry",
-    "SourceReliabilityRegistry",
-    "get_reliability_registry",
     "FuzzyMatcher",
+    "SourceMetadata",
+    "SourceReliabilityRegistry",
     "get_fuzzy_matcher",
+    "get_registry",
+    "get_reliability_registry",
 ]

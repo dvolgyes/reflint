@@ -204,10 +204,9 @@ class EnhancedCache:
                             self.stats.hits += 1
                             logger.debug(f"Cache hit (disk): {key[:16]}...")
                             return disk_entry.value
-                        else:
-                            # Remove expired entry from disk
-                            self._disk_cache.delete(key)
-                            self.stats.evictions += 1
+                        # Remove expired entry from disk
+                        self._disk_cache.delete(key)
+                        self.stats.evictions += 1
                 except Exception as e:
                     logger.debug(f"Disk cache read error: {e}")
 
@@ -352,24 +351,23 @@ class EnhancedCache:
 
                 logger.info(f"Cache cleared: {count} entries")
                 return count
-            else:
-                # Clear entries from specific source
-                to_remove = [
-                    key
-                    for key, entry in self._memory_cache.items()
-                    if entry.source == source
-                ]
+            # Clear entries from specific source
+            to_remove = [
+                key
+                for key, entry in self._memory_cache.items()
+                if entry.source == source
+            ]
 
-                for key in to_remove:
-                    del self._memory_cache[key]
+            for key in to_remove:
+                del self._memory_cache[key]
 
-                # For disk cache, we'd need to iterate through all entries
-                # which is expensive, so we skip source-specific clearing for disk
+            # For disk cache, we'd need to iterate through all entries
+            # which is expensive, so we skip source-specific clearing for disk
 
-                logger.info(
-                    f"Cache cleared for source '{source}': {len(to_remove)} entries"
-                )
-                return len(to_remove)
+            logger.info(
+                f"Cache cleared for source '{source}': {len(to_remove)} entries"
+            )
+            return len(to_remove)
 
     def cleanup_expired(self) -> int:
         """Remove all expired entries from cache.
@@ -439,7 +437,7 @@ class EnhancedCache:
 class RequestDeduplicator:
     """Prevents duplicate requests within a session."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the request deduplicator."""
         self._pending: dict[str, Any] = {}
         self._lock = Lock()
@@ -520,7 +518,9 @@ def get_deduplicator() -> RequestDeduplicator:
     return _global_deduplicator
 
 
-def cached(source: str | None = None, ttl: float | None = None):
+def cached(
+    source: str | None = None, ttl: float | None = None
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator for caching function results.
 
     Args:
@@ -531,8 +531,8 @@ def cached(source: str | None = None, ttl: float | None = None):
         Decorator function
     """
 
-    def decorator(func: Callable) -> Callable:
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             cache = get_cache()
 
             # Generate cache key from function name and arguments
@@ -553,7 +553,7 @@ def cached(source: str | None = None, ttl: float | None = None):
     return decorator
 
 
-def deduplicated(func: Callable) -> Callable:
+def deduplicated(func: Callable[..., Any]) -> Callable[..., Any]:
     """Decorator for preventing duplicate requests.
 
     Args:
@@ -563,7 +563,7 @@ def deduplicated(func: Callable) -> Callable:
         Wrapped function that prevents duplicates
     """
 
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         deduplicator = get_deduplicator()
 
         # Generate request key
@@ -577,8 +577,7 @@ def deduplicated(func: Callable) -> Callable:
 
         try:
             deduplicator.add_pending(request_key)
-            result = func(*args, **kwargs)
-            return result
+            return func(*args, **kwargs)
         finally:
             deduplicator.complete_request(request_key)
 
